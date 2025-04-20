@@ -1,0 +1,29 @@
+{
+    "name": "JQB",
+    "version": "1.0.0",
+    "description": "Biblioteka dla aplikacji",
+    "keywords": "windows, app, winapi",
+    "repository":
+    {
+      "type": "git",
+      "url": "https://github.com/JAQUBA/JQB_WindowsLib.git",
+      "branch": "master"
+    },
+    "authors":
+    [
+      {
+        "name": "JAQUBA",
+        "email": "kjakubowski0492@gmail.com",
+        "url": "https://github.com/JAQUBA",
+        "maintainer": true
+      }
+    ],
+    "license": "GPL-3.0-or-later",
+    "frameworks": "*",
+    "platforms": "native",
+    "build": {
+      "libArchive": false,
+      "libLDFMode": "deep+",
+      "extraScript": "scripts/compile_resources.py"
+    }
+}
