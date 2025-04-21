@@ -3,7 +3,7 @@
 // Inicjalizacja statycznej zmiennej
 SimpleWindow* SimpleWindow::s_instance = nullptr;
 
-SimpleWindow::SimpleWindow(int width, int height, const std::wstring& title, int iconId)
+SimpleWindow::SimpleWindow(int width, int height, const char *title, int iconId)
     : m_width(width), m_height(height), m_title(title), m_iconId(iconId), m_hwnd(NULL) {
     s_instance = this;
 
@@ -40,7 +40,7 @@ bool SimpleWindow::init() {
 
     m_hwnd = CreateWindow(
         CLASS_NAME,
-        m_title.c_str(),
+        m_title,
         WS_OVERLAPPEDWINDOW,
         CW_USEDEFAULT, CW_USEDEFAULT,
         m_width, m_height,

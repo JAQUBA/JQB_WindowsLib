@@ -7,7 +7,7 @@
 class SimpleWindow {
     public:
 
-        SimpleWindow(int width, int height, const std::wstring& title, int iconId);
+        SimpleWindow(int width, int height, const char* title, int iconId);
         ~SimpleWindow();
 
         bool init();
@@ -21,7 +21,7 @@ class SimpleWindow {
 
         int m_width;
         int m_height;
-        std::wstring m_title;
+        const char *m_title;
         int m_iconId;
 
         // Statyczna funkcja obsługująca wiadomości okna
