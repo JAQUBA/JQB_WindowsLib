@@ -24,7 +24,7 @@ void Select::create(HWND parent) {
         m_text.c_str(),
         WS_CHILD | WS_VISIBLE | CBS_DROPDOWN | CBS_HASSTRINGS | WS_VSCROLL,
         m_x, m_y,
-        m_width, m_height,
+        m_width, m_height + 150, // Zwiększona wysokość dla rozwijalnej listy
         parent,
         (HMENU)(INT_PTR)m_id,
         _core.hInstance,
@@ -50,6 +50,12 @@ void Select::create(HWND parent) {
     if (m_linkedItems) {
         updateItems();
     }
+    
+    // Ustaw rzeczywistą wysokość kontrolki edycji (część nie rozwijana)
+    SendMessage(m_hwnd, CB_SETITEMHEIGHT, (WPARAM)-1, (LPARAM)m_height - 6);
+    
+    // Ustaw wysokość elementów w rozwijanej liście
+    SendMessage(m_hwnd, CB_SETDROPPEDWIDTH, (WPARAM)m_width, 0);
 }
 
 void Select::handleSelection() {

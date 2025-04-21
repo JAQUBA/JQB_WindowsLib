@@ -1,4 +1,5 @@
 #include "TextArea.h"
+#include <Windows.h>
 
 // Inicjalizacja statycznej zmiennej
 int TextArea::s_nextId = 4000;
@@ -15,9 +16,41 @@ TextArea::~TextArea() {
     }
 }
 
+// Konwersja z UTF-8 na Unicode (std::wstring)
+std::wstring TextArea::utf8ToWide(const std::string& text) const {
+    if (text.empty()) return std::wstring();
+    
+    // Oblicz wymaganą długość bufora
+    int size_needed = MultiByteToWideChar(CP_UTF8, 0, text.c_str(), (int)text.size(), NULL, 0);
+    std::wstring wstrTo(size_needed, 0);
+    
+    // Wykonaj konwersję
+    MultiByteToWideChar(CP_UTF8, 0, text.c_str(), (int)text.size(), &wstrTo[0], size_needed);
+    
+    return wstrTo;
+}
+
+// Konwersja z Unicode na UTF-8
+std::string TextArea::wideToUtf8(const std::wstring& wstr) const {
+    if (wstr.empty()) return std::string();
+    
+    // Oblicz wymaganą długość bufora
+    int size_needed = WideCharToMultiByte(CP_UTF8, 0, wstr.c_str(), (int)wstr.size(), NULL, 0, NULL, NULL);
+    std::string strTo(size_needed, 0);
+    
+    // Wykonaj konwersję
+    WideCharToMultiByte(CP_UTF8, 0, wstr.c_str(), (int)wstr.size(), &strTo[0], size_needed, NULL, NULL);
+    
+    return strTo;
+}
+
+std::string TextArea::getTextUTF8() const {
+    return wideToUtf8(m_text);
+}
+
 void TextArea::create(HWND parent) {
-    m_hwnd = CreateWindow(
-        TEXT("EDIT"),
+    m_hwnd = CreateWindowW(
+        L"EDIT",
         m_text.c_str(),
         WS_CHILD | WS_VISIBLE | ES_MULTILINE | ES_AUTOVSCROLL | WS_VSCROLL | ES_READONLY,
         m_x, m_y,
@@ -41,29 +74,42 @@ void TextArea::create(HWND parent) {
 }
 
 void TextArea::setText(const char* text) {
+    setText(std::string(text));
+}
+
+void TextArea::setText(const std::string& text) {
+    m_text = utf8ToWide(text);
+    if (m_hwnd) {
+        SetWindowTextW(m_hwnd, m_text.c_str());
+    }
+}
+
+void TextArea::setText(const wchar_t* text) {
+    setText(std::wstring(text));
+}
+
+void TextArea::setText(const std::wstring& text) {
     m_text = text;
     if (m_hwnd) {
-        SetWindowText(m_hwnd, m_text.c_str());
+        SetWindowTextW(m_hwnd, m_text.c_str());
     }
 }
 
 void TextArea::append(const std::string& text) {
+    append(utf8ToWide(text));
+}
+
+void TextArea::append(const std::wstring& text) {
     if (!m_hwnd) return;
     
     // Pobierz aktualną długość tekstu
-    int textLength = GetWindowTextLength(m_hwnd);
+    int textLength = GetWindowTextLengthW(m_hwnd);
     
     // Ustaw kursor na końcu tekstu
     SendMessage(m_hwnd, EM_SETSEL, (WPARAM)textLength, (LPARAM)textLength);
     
-    // Dodaj znak nowej linii, jeśli tekst nie jest pusty i ostatni znak nie jest już nową linią
-    if (textLength > 0 && m_text[m_text.length() - 1] != '\n') {
-        SendMessage(m_hwnd, EM_REPLACESEL, TRUE, (LPARAM)"\r\n");
-        m_text += "\r\n";
-    }
-    
-    // Dodaj nowy tekst
-    SendMessage(m_hwnd, EM_REPLACESEL, TRUE, (LPARAM)text.c_str());
+    // Dodaj nowy tekst bez automatycznego dodawania znaków nowej linii
+    SendMessageW(m_hwnd, EM_REPLACESEL, TRUE, (LPARAM)text.c_str());
     m_text += text;
     
     // Przewiń do końca
@@ -73,6 +119,6 @@ void TextArea::append(const std::string& text) {
 void TextArea::clear() {
     m_text.clear();
     if (m_hwnd) {
-        SetWindowText(m_hwnd, "");
+        SetWindowTextW(m_hwnd, L"");
     }
 }
