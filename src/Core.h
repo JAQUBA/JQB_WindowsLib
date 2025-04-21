@@ -12,10 +12,18 @@
 #include <cstdint>
 #include <functional>
 
+#define __weak __attribute__((weak))
+
 class Core {
     public:
+        HINSTANCE hInstance;
+        HINSTANCE hPrevInstance;
+        LPSTR lpCmdLine;
+        int nCmdShow;
         Core();
 };
+
+extern Core _core;
 
 #ifdef __cplusplus
 extern "C" {
