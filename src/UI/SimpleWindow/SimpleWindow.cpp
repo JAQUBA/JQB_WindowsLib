@@ -7,6 +7,9 @@
 // Inicjalizacja statycznej zmiennej
 SimpleWindow* SimpleWindow::s_instance = nullptr;
 
+// Identyfikator timera dla długich naciśnięć
+static const UINT_PTR LONG_PRESS_TIMER_ID = 1000;
+
 SimpleWindow::SimpleWindow(int width, int height, const char *title, int iconId)
     : m_width(width), m_height(height), m_title(title), m_iconId(iconId), m_hwnd(NULL) {
     s_instance = this;
@@ -39,6 +42,7 @@ SimpleWindow::~SimpleWindow() {
         DestroyWindow(m_hwnd);
         m_hwnd = NULL;
     }
+    PostQuitMessage(0);
 }
 
 #define CLASS_NAME TEXT("OWON_OW18B_Window")
@@ -116,24 +120,22 @@ void SimpleWindow::add(TextArea* textArea) {
 LRESULT CALLBACK SimpleWindow::WindowProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam) {
     // Obsługa wiadomości
     switch (uMsg) {
-        case WM_COMMAND:
-            // Sprawdzenie, czy to kliknięcie przycisku
-            if (HIWORD(wParam) == BN_CLICKED) {
-                int controlId = LOWORD(wParam);
-                // Sprawdź, czy to nasz przycisk
-                if (s_instance) {
-                    for (auto button : s_instance->m_buttons) {
-                        if (button->getId() == controlId) {
-                            button->handleClick();
-                            return 0;
-                        }
-                    }
-                }
+        case WM_COMMAND: {
+            int controlId = LOWORD(wParam);
+            int notificationCode = HIWORD(wParam);
+            
+            // Obsługa komunikatów przycisków
+            if (notificationCode == BN_CLICKED) {
+                // Zakończenie naciśnięcia przycisku
+                endButtonPress(controlId);
+            }
+            // Obsługa komunikatów przycisków - naciśnięcie
+            else if (notificationCode == BN_PUSHED) {
+                // Rozpoczęcie naciśnięcia przycisku
+                startButtonPress(controlId);
             }
             // Sprawdzenie, czy to zmiana wyboru w kontrolce Select
-            else if (HIWORD(wParam) == CBN_SELCHANGE) {
-                int controlId = LOWORD(wParam);
-                // Sprawdź, czy to nasza kontrolka Select
+            else if (notificationCode == CBN_SELCHANGE) {
                 if (s_instance) {
                     for (auto select : s_instance->m_selects) {
                         if (select->getId() == controlId) {
@@ -143,10 +145,19 @@ LRESULT CALLBACK SimpleWindow::WindowProc(HWND hwnd, UINT uMsg, WPARAM wParam, L
                     }
                 }
             }
+            
             // Jeśli naciśnięto przycisk zamknięcia (ID = 1)
-            if (LOWORD(wParam) == 1) {
+            if (controlId == 1) {
                 // Zamknij okno
                 PostMessage(hwnd, WM_CLOSE, 0, 0);
+            }
+            return 0;
+        }
+        
+        case WM_TIMER:
+            // Obsługa timera dla długich naciśnięć
+            if (wParam == LONG_PRESS_TIMER_ID) {
+                checkForLongPresses();
             }
             return 0;
             
@@ -157,7 +168,8 @@ LRESULT CALLBACK SimpleWindow::WindowProc(HWND hwnd, UINT uMsg, WPARAM wParam, L
         case WM_DESTROY:
             PostQuitMessage(0);
             return 0;
+            
+        default:
+            return DefWindowProc(hwnd, uMsg, wParam, lParam);
     }
-    
-    return DefWindowProc(hwnd, uMsg, wParam, lParam);
 }
