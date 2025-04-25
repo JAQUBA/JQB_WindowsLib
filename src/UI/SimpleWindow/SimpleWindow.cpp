@@ -3,6 +3,7 @@
 #include "../Label/Label.h"
 #include "../Select/Select.h"
 #include "../TextArea/TextArea.h"
+#include "../ValueDisplay/ValueDisplay.h"
 
 // Inicjalizacja statycznej zmiennej
 SimpleWindow* SimpleWindow::s_instance = nullptr;
@@ -36,6 +37,11 @@ SimpleWindow::~SimpleWindow() {
         delete textArea;
     }
     m_textAreas.clear();
+    
+    for (auto valueDisplay : m_valueDisplays) {
+        delete valueDisplay;
+    }
+    m_valueDisplays.clear();
 
     // Zniszczenie okna
     if (m_hwnd) {
@@ -117,6 +123,12 @@ void SimpleWindow::add(TextArea* textArea) {
     m_textAreas.push_back(textArea);
 }
 
+// Metoda dodająca komponent ValueDisplay do okna
+void SimpleWindow::add(ValueDisplay* valueDisplay) {
+    valueDisplay->create(m_hwnd);
+    m_valueDisplays.push_back(valueDisplay);
+}
+
 LRESULT CALLBACK SimpleWindow::WindowProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam) {
     // Obsługa wiadomości
     switch (uMsg) {
@@ -171,5 +183,5 @@ LRESULT CALLBACK SimpleWindow::WindowProc(HWND hwnd, UINT uMsg, WPARAM wParam, L
             
         default:
             return DefWindowProc(hwnd, uMsg, wParam, lParam);
-    }
-}
+    }  // Zamknięcie switch
+}  // Zamknięcie funkcji WindowProc

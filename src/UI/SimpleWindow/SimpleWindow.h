@@ -9,6 +9,7 @@ class Button;
 class Label;
 class Select;
 class TextArea;
+class ValueDisplay;
 
 class SimpleWindow {
     public:
@@ -24,6 +25,7 @@ class SimpleWindow {
         void add(Label* label);
         void add(Select* select);
         void add(TextArea* textArea);
+        void add(ValueDisplay* valueDisplay);
         
     private:
         static SimpleWindow* s_instance;
@@ -40,6 +42,7 @@ class SimpleWindow {
         std::vector<Label*> m_labels;
         std::vector<Select*> m_selects;
         std::vector<TextArea*> m_textAreas;
+        std::vector<ValueDisplay*> m_valueDisplays;
 
         // Statyczna funkcja obsługująca wiadomości okna
         static LRESULT CALLBACK WindowProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam);
