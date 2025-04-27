@@ -43,6 +43,12 @@ namespace StringUtils {
         return strTo;
     }
     
+    // Konwersja z wstring na string
+    std::string wstringToString(const std::wstring& wstr) {
+        // W najprostszej implementacji możemy wykorzystać istniejącą funkcję wideToUtf8
+        return wideToUtf8(wstr);
+    }
+    
     // Wyodrębnia nazwę portu COM z tekstu (np. "USB Serial Port (COM3)" -> "COM3")
     std::string extractComPort(const char* text) {
         if (!text) return "";

@@ -17,11 +17,22 @@ int ValueDisplay::s_nextId = 5000;
 
 ValueDisplay::ValueDisplay(int x, int y, int width, int height)
     : m_x(x), m_y(y), m_width(width), m_height(height), m_hwnd(NULL),
-      m_value(0.0), m_mode(0), m_range(0), 
+      m_value(0.0), m_mode(0), m_range(0), m_modeString(L""),
       m_isAuto(false), m_isHold(false), m_isDelta(false),
       m_prefix(L""), m_unit(L""),
       m_valueFont(NULL), m_unitFont(NULL), m_statusFont(NULL) {
     m_id = s_nextId++;
+    
+    // Domyślny formater wartości
+    m_valueFormatter = [](double value, int precision) {
+        if (std::isinf(value)) {
+            return std::wstring(L"OL"); // Przekroczenie zakresu pomiaru
+        }
+        
+        std::wstringstream ss;
+        ss << std::fixed << std::setprecision(precision) << value;
+        return ss.str();
+    };
 }
 
 ValueDisplay::~ValueDisplay() {
@@ -143,9 +154,22 @@ void ValueDisplay::updateValue(double value, const std::wstring& prefix, const s
     }
 }
 
-// Aktualizacja trybu pomiaru
+// Aktualizacja etykiety trybu pomiaru (uniwersalny)
+void ValueDisplay::setMode(const std::wstring& mode) {
+    m_modeString = mode;
+    
+    // Wymuszenie odświeżenia kontrolki
+    if (m_hwnd) {
+        InvalidateRect(m_hwnd, NULL, TRUE);
+    }
+}
+
+// Zachowana dla kompatybilności wstecznej
 void ValueDisplay::setMode(uint8_t mode) {
     m_mode = mode;
+    
+    // Automatyczne ustawienie etykiety trybu na podstawie kodu
+    m_modeString = getModeString(mode);
     
     // Wymuszenie odświeżenia kontrolki
     if (m_hwnd) {
@@ -256,6 +280,100 @@ void ValueDisplay::updateDisplay(double value, uint8_t mode, uint8_t range,
     }
 }
 
+// Nowa metoda do pełnej aktualizacji z uniwersalnymi parametrami
+void ValueDisplay::updateFullDisplay(double value, const std::wstring& prefix, const std::wstring& unit, 
+                                    const std::wstring& mode,
+                                    const std::map<std::wstring, bool>& statuses) {
+    m_value = value;
+    m_prefix = prefix;
+    m_unit = unit;
+    m_modeString = mode;
+    m_statuses = statuses;
+    
+    // Wymuszenie odświeżenia kontrolki
+    if (m_hwnd) {
+        InvalidateRect(m_hwnd, NULL, TRUE);
+    }
+}
+
+// Dodanie własnego statusu
+void ValueDisplay::addCustomStatus(const std::wstring& statusName, bool isActive) {
+    m_statuses[statusName] = isActive;
+    
+    // Wymuszenie odświeżenia kontrolki
+    if (m_hwnd) {
+        InvalidateRect(m_hwnd, NULL, TRUE);
+    }
+}
+
+// Metoda do ustawienia niestandardowego formatera wartości
+void ValueDisplay::setValueFormatter(ValueFormatter formatter) {
+    if (formatter) {
+        m_valueFormatter = formatter;
+        
+        // Wymuszenie odświeżenia kontrolki
+        if (m_hwnd) {
+            InvalidateRect(m_hwnd, NULL, TRUE);
+        }
+    }
+}
+
+// Metoda do konfiguracji wyglądu
+void ValueDisplay::setConfig(const DisplayConfig& config) {
+    m_config = config;
+    
+    // Odtworzenie czcionek z nowymi parametrami
+    if (m_hwnd) {
+        // Usuń stare czcionki
+        if (m_valueFont) DeleteObject(m_valueFont);
+        if (m_unitFont) DeleteObject(m_unitFont);
+        if (m_statusFont) DeleteObject(m_statusFont);
+        
+        // Utwórz nowe czcionki z nowymi parametrami
+        m_valueFont = CreateFontW(
+            static_cast<int>(m_height * m_config.valueFontRatio),  // Wysokość czcionki
+            0, 0, 0,                        // Szerokość, pochylenie, orientacja
+            FW_BOLD,                        // Grubość
+            FALSE, FALSE, FALSE,            // Kursywa, podkreślenie, przekreślenie
+            DEFAULT_CHARSET,                // Zestaw znaków
+            OUT_DEFAULT_PRECIS,             // Precyzja wyjścia
+            CLIP_DEFAULT_PRECIS,            // Precyzja przycinania
+            ANTIALIASED_QUALITY,            // Jakość
+            DEFAULT_PITCH | FF_SWISS,       // Typ i rodzina czcionki
+            m_config.fontName.c_str()       // Nazwa czcionki
+        );
+        
+        m_unitFont = CreateFontW(
+            static_cast<int>(m_height * m_config.unitFontRatio),
+            0, 0, 0,
+            FW_BOLD,
+            FALSE, FALSE, FALSE,
+            DEFAULT_CHARSET,
+            OUT_DEFAULT_PRECIS,
+            CLIP_DEFAULT_PRECIS,
+            ANTIALIASED_QUALITY,
+            DEFAULT_PITCH | FF_SWISS,
+            m_config.fontName.c_str()
+        );
+        
+        m_statusFont = CreateFontW(
+            static_cast<int>(m_height * m_config.statusFontRatio),
+            0, 0, 0,
+            FW_NORMAL,
+            FALSE, FALSE, FALSE,
+            DEFAULT_CHARSET,
+            OUT_DEFAULT_PRECIS,
+            CLIP_DEFAULT_PRECIS,
+            ANTIALIASED_QUALITY,
+            DEFAULT_PITCH | FF_SWISS,
+            m_config.fontName.c_str()
+        );
+        
+        // Wymuszenie odświeżenia kontrolki
+        InvalidateRect(m_hwnd, NULL, TRUE);
+    }
+}
+
 // Rysowanie wyświetlacza
 void ValueDisplay::drawDisplay() {
     if (!m_hwnd) return;
@@ -273,7 +391,7 @@ void ValueDisplay::drawDisplay() {
     HBITMAP oldBitmap = (HBITMAP)SelectObject(memDC, memBitmap);
     
     // Wypełnienie tła
-    HBRUSH bgBrush = CreateSolidBrush(COLOR_DISPLAY_BG);
+    HBRUSH bgBrush = CreateSolidBrush(getBackgroundColor());
     FillRect(memDC, &clientRect, bgBrush);
     DeleteObject(bgBrush);
     
@@ -285,17 +403,8 @@ void ValueDisplay::drawDisplay() {
     SetTextColor(memDC, textColor);
     SetBkMode(memDC, TRANSPARENT);
     
-    // Formatowanie wartości jako string z dwoma miejscami po przecinku
-    std::wstringstream ss;
-    std::wstring valueText;
-    
-    // Sprawdzenie, czy wartość to nieskończoność (reprezentująca OL - Open Line)
-    if (std::isinf(m_value)) {
-        valueText = L"OL"; // Przekroczenie zakresu pomiaru
-    } else {
-        ss << std::fixed << std::setprecision(2) << m_value;
-        valueText = ss.str();
-    }
+    // Formatowanie wartości jako string
+    std::wstring valueText = formatValue(m_value);
     
     // Obliczanie pozycji tekstu
     SIZE valueSize;
@@ -317,12 +426,18 @@ void ValueDisplay::drawDisplay() {
     
     TextOutW(memDC, unitX, unitY, unitText.c_str(), unitText.length());
     
-    // Rysowanie statusu (AUTO, HOLD, DELTA)
+    // Rysowanie statusu (AUTO, HOLD, DELTA oraz niestandardowe)
     SelectObject(memDC, m_statusFont);
     std::wstring statusText = L"";
     if (m_isAuto) statusText += L"AUTO ";
     if (m_isHold) statusText += L"HOLD ";
     if (m_isDelta) statusText += L"DELTA ";
+    
+    for (const auto& status : m_statuses) {
+        if (status.second) {
+            statusText += status.first + L" ";
+        }
+    }
     
     if (!statusText.empty()) {
         SIZE statusSize;
@@ -334,7 +449,7 @@ void ValueDisplay::drawDisplay() {
     }
     
     // Rysowanie trybu pomiaru
-    std::wstring modeText = getModeString();
+    std::wstring modeText = m_modeString.empty() ? getModeString(m_mode) : m_modeString;
     if (!modeText.empty()) {
         SIZE modeSize;
         GetTextExtentPoint32W(memDC, modeText.c_str(), modeText.length(), &modeSize);
@@ -358,9 +473,25 @@ void ValueDisplay::drawDisplay() {
     EndPaint(m_hwnd, &ps);
 }
 
-// Konwersja trybu na tekst
-std::wstring ValueDisplay::getModeString() const {
-    switch (m_mode) {
+// Metoda formatująca wartość przy użyciu formatera (lub domyślnie)
+std::wstring ValueDisplay::formatValue(double value) const {
+    if (m_valueFormatter) {
+        return m_valueFormatter(value, m_config.precision);
+    }
+    
+    // Domyślne formatowanie, jeśli formatter nie jest ustawiony
+    if (std::isinf(value)) {
+        return std::wstring(L"OL");
+    }
+    
+    std::wstringstream ss;
+    ss << std::fixed << std::setprecision(m_config.precision) << value;
+    return ss.str();
+}
+
+// Konwersja trybu na tekst - wersja z parametrem mode
+std::wstring ValueDisplay::getModeString(uint8_t mode) const {
+    switch (mode) {
         case 1: return L"DC mV";
         case 3: return L"DC V";
         case 5: return L"DC A";
@@ -388,19 +519,19 @@ std::wstring ValueDisplay::getRangeString() const {
     }
 }
 
-// Zwraca kolor tła
+// Zwraca kolor tła (z uwzględnieniem konfiguracji)
 COLORREF ValueDisplay::getBackgroundColor() const {
-    return COLOR_DISPLAY_BG;
+    return m_config.backgroundColor;
 }
 
-// Zwraca kolor tekstu
+// Zwraca kolor tekstu (z uwzględnieniem konfiguracji i statusu)
 COLORREF ValueDisplay::getTextColor() const {
     if (m_isHold) {
-        return COLOR_DISPLAY_TEXT_HOLD;
+        return m_config.holdTextColor;
     } else if (m_isDelta) {
-        return COLOR_DISPLAY_TEXT_DELTA;
+        return m_config.deltaTextColor;
     } else {
-        return COLOR_DISPLAY_TEXT;
+        return m_config.textColor;
     }
 }
 

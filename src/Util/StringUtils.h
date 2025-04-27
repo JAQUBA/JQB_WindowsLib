@@ -12,6 +12,9 @@ namespace StringUtils {
     // Konwersja z Unicode (UTF-16) na UTF-8
     std::string wideToUtf8(const std::wstring& wstr);
     
+    // Konwersja z wstring na string
+    std::string wstringToString(const std::wstring& wstr);
+    
     // Wyodrębnia nazwę portu COM z tekstu (np. "USB Serial Port (COM3)" -> "COM3")
     std::string extractComPort(const char* text);
 }
