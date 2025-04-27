@@ -4,6 +4,7 @@
 #include "../Select/Select.h"
 #include "../TextArea/TextArea.h"
 #include "../ValueDisplay/ValueDisplay.h"
+#include "../../Util/StringUtils.h"
 
 // Inicjalizacja statycznej zmiennej
 SimpleWindow* SimpleWindow::s_instance = nullptr;
@@ -51,13 +52,14 @@ SimpleWindow::~SimpleWindow() {
     PostQuitMessage(0);
 }
 
-#define CLASS_NAME TEXT("OWON_OW18B_Window")
-
 bool SimpleWindow::init() {
-    WNDCLASS mainWindow = {};
+    // Konwersja tytułu z UTF-8 na UTF-16
+    std::wstring wideTitle = StringUtils::utf8ToWide(m_title);
+    
+    WNDCLASSW mainWindow = {};
     mainWindow.lpfnWndProc = WindowProc;
     mainWindow.hInstance = _core.hInstance;
-    mainWindow.lpszClassName = TEXT("OWON_OW18B_Window");
+    mainWindow.lpszClassName = L"OWON_OW18B_Window";
     mainWindow.hbrBackground = (HBRUSH)(COLOR_WINDOW + 1);
     mainWindow.hCursor = LoadCursor(NULL, IDC_ARROW);
     
@@ -68,13 +70,13 @@ bool SimpleWindow::init() {
         mainWindow.hIcon = LoadIcon(NULL, IDI_APPLICATION);
     }
 
-    if (!RegisterClass(&mainWindow)) {
+    if (!RegisterClassW(&mainWindow)) {
         return false;
     }
 
-    m_hwnd = CreateWindow(
-        CLASS_NAME,
-        m_title,
+    m_hwnd = CreateWindowW(
+        L"OWON_OW18B_Window",
+        wideTitle.c_str(),
         WS_OVERLAPPEDWINDOW,
         CW_USEDEFAULT, CW_USEDEFAULT,
         m_width, m_height,
@@ -85,7 +87,7 @@ bool SimpleWindow::init() {
     );
 
     if (m_hwnd == NULL) {
-        MessageBox(NULL, TEXT("Nie udało się utworzyć okna"), TEXT("Błąd"), MB_OK | MB_ICONERROR);
+        MessageBoxW(NULL, L"Nie udało się utworzyć okna", L"Błąd", MB_OK | MB_ICONERROR);
         return 0;
     }
 

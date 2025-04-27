@@ -12,7 +12,7 @@ public:
     ~ValueDisplay();
 
     void create(HWND parent);
-    void updateValue(double value, const std::string& prefix, const std::string& unit);
+    void updateValue(double value, const std::wstring& prefix, const std::wstring& unit);
     void setMode(uint8_t mode);
     void setRange(uint8_t range);
     void setAuto(bool isAuto);
@@ -36,8 +36,8 @@ public:
 
 private:
     void drawDisplay();
-    std::string getModeString() const;
-    std::string getRangeString() const;
+    std::wstring getModeString() const;
+    std::wstring getRangeString() const;
     COLORREF getBackgroundColor() const;
     COLORREF getTextColor() const;
 
@@ -56,8 +56,8 @@ private:
     bool m_isAuto;            // Czy tryb auto jest aktywny
     bool m_isHold;            // Czy funkcja hold jest aktywna
     bool m_isDelta;           // Czy funkcja delta jest aktywna
-    std::string m_prefix;     // Przedrostek jednostki (m, k, M, itd.)
-    std::string m_unit;       // Jednostka miary (V, A, Ohm itd.)
+    std::wstring m_prefix;    // Przedrostek jednostki (m, k, M, itd.)
+    std::wstring m_unit;      // Jednostka miary (V, A, Ohm itd.)
     
     // Czcionka do rysowania wartości
     HFONT m_valueFont;

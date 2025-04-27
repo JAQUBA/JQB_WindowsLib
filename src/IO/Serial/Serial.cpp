@@ -1,4 +1,5 @@
 #include "Serial.h"
+#include "../../Util/StringUtils.h"
 #include <setupapi.h>
 #include <initguid.h>
 #include <devguid.h>
@@ -147,16 +148,8 @@ void Serial::updateComPorts() {
         // Sprawdź, czy to jest port COM
         if (strstr(friendlyName, "COM") != NULL) {
             // Wyodrębnij tylko numer portu COM
-            char* start = strstr(friendlyName, "COM");
-            if (start) {
-                char comPort[10] = { 0 };
-                int j = 0;
-                while (start[j] && start[j] != ' ' && start[j] != ')' && j < 9) {
-                    comPort[j] = start[j];
-                    j++;
-                }
-                comPort[j] = '\0';
-                
+            std::string comPort = StringUtils::extractComPort(friendlyName);
+            if (!comPort.empty()) {
                 // Dodaj port do listy
                 m_availablePorts.push_back(comPort);
             }

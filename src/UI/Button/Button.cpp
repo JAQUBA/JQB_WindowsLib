@@ -1,4 +1,5 @@
 #include "Button.h"
+#include "../../Util/StringUtils.h"
 #include <chrono>
 #include <map>
 #include <windows.h>
@@ -142,9 +143,12 @@ Button::~Button() {
 }
 
 void Button::create(HWND parent) {
-    m_hwnd = CreateWindow(
-        TEXT("BUTTON"),
-        m_text.c_str(),
+    // Konwersja tekstu z UTF-8 na UTF-16 dla kompatybilności z Windows API
+    std::wstring wideText = StringUtils::utf8ToWide(m_text);
+    
+    m_hwnd = CreateWindowW(
+        L"BUTTON",
+        wideText.c_str(),
         WS_CHILD | WS_VISIBLE | BS_PUSHBUTTON,
         m_x, m_y,
         m_width, m_height,

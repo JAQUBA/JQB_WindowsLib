@@ -1,4 +1,5 @@
 #include "Select.h"
+#include "../../Util/StringUtils.h"
 #include <CommCtrl.h>
 
 // Inicjalizacja statycznej zmiennej
@@ -18,10 +19,13 @@ Select::~Select() {
 }
 
 void Select::create(HWND parent) {
+    // Konwersja tekstu z UTF-8 na UTF-16
+    std::wstring wideText = StringUtils::utf8ToWide(m_text);
+    
     // Tworzenie kontrolki combobox
-    m_hwnd = CreateWindow(
-        TEXT("COMBOBOX"),
-        m_text.c_str(),
+    m_hwnd = CreateWindowW(
+        L"COMBOBOX",
+        wideText.c_str(),
         WS_CHILD | WS_VISIBLE | CBS_DROPDOWN | CBS_HASSTRINGS | WS_VSCROLL,
         m_x, m_y,
         m_width, m_height + 150, // Zwiększona wysokość dla rozwijalnej listy
@@ -38,12 +42,13 @@ void Select::create(HWND parent) {
 
     // Dodanie elementów do kontrolki
     for (const auto& item : m_items) {
-        SendMessage(m_hwnd, CB_ADDSTRING, 0, (LPARAM)item.c_str());
+        std::wstring wideItem = StringUtils::utf8ToWide(item);
+        SendMessageW(m_hwnd, CB_ADDSTRING, 0, (LPARAM)wideItem.c_str());
     }
 
     // Jeśli był wybrany element, ustaw go ponownie
     if (m_selectedIndex >= 0 && m_selectedIndex < (int)m_items.size()) {
-        SendMessage(m_hwnd, CB_SETCURSEL, (WPARAM)m_selectedIndex, 0);
+        SendMessageW(m_hwnd, CB_SETCURSEL, (WPARAM)m_selectedIndex, 0);
     }
     
     // Jeśli istnieją powiązane elementy, zaktualizuj listę
@@ -52,22 +57,22 @@ void Select::create(HWND parent) {
     }
     
     // Ustaw rzeczywistą wysokość kontrolki edycji (część nie rozwijana)
-    SendMessage(m_hwnd, CB_SETITEMHEIGHT, (WPARAM)-1, (LPARAM)m_height - 6);
+    SendMessageW(m_hwnd, CB_SETITEMHEIGHT, (WPARAM)-1, (LPARAM)m_height - 6);
     
     // Ustaw wysokość elementów w rozwijanej liście
-    SendMessage(m_hwnd, CB_SETDROPPEDWIDTH, (WPARAM)m_width, 0);
+    SendMessageW(m_hwnd, CB_SETDROPPEDWIDTH, (WPARAM)m_width, 0);
 }
 
 void Select::handleSelection() {
-    int index = (int)SendMessage(m_hwnd, CB_GETCURSEL, 0, 0);
+    int index = (int)SendMessageW(m_hwnd, CB_GETCURSEL, 0, 0);
     
     if (index != CB_ERR) {
         m_selectedIndex = index;
         
         // Pobierz tekst wybranego elementu
-        char buffer[256];
-        SendMessage(m_hwnd, CB_GETLBTEXT, index, (LPARAM)buffer);
-        m_text = buffer;
+        wchar_t buffer[256];
+        SendMessageW(m_hwnd, CB_GETLBTEXT, index, (LPARAM)buffer);
+        m_text = StringUtils::wideToUtf8(buffer);
         
         // Wywołaj funkcję callback, jeśli istnieje
         if (m_onChange) {
@@ -81,14 +86,16 @@ void Select::addItem(const char* item) {
     
     // Jeśli kontrolka jest już utworzona, dodaj element do listy
     if (m_hwnd) {
-        SendMessage(m_hwnd, CB_ADDSTRING, 0, (LPARAM)item);
+        std::wstring wideItem = StringUtils::utf8ToWide(item);
+        SendMessageW(m_hwnd, CB_ADDSTRING, 0, (LPARAM)wideItem.c_str());
     }
 }
 
 void Select::setText(const char* text) {
     m_text = text;
     if (m_hwnd) {
-        SetWindowText(m_hwnd, m_text.c_str());
+        std::wstring wideText = StringUtils::utf8ToWide(m_text);
+        SetWindowTextW(m_hwnd, wideText.c_str());
     }
 }
 
@@ -97,7 +104,7 @@ void Select::clear() {
     m_selectedIndex = -1;
     
     if (m_hwnd) {
-        SendMessage(m_hwnd, CB_RESETCONTENT, 0, 0);
+        SendMessageW(m_hwnd, CB_RESETCONTENT, 0, 0);
     }
 }
 
@@ -114,18 +121,19 @@ void Select::updateItems() {
     if (!m_linkedItems) return;
     
     // Wyczyść aktualną listę
-    SendMessage(m_hwnd, CB_RESETCONTENT, 0, 0);
+    SendMessageW(m_hwnd, CB_RESETCONTENT, 0, 0);
     m_items.clear();
     
     // Dodaj wszystkie elementy z powiązanej listy
     for (const auto& item : *m_linkedItems) {
         m_items.push_back(item);
-        SendMessage(m_hwnd, CB_ADDSTRING, 0, (LPARAM)item.c_str());
+        std::wstring wideItem = StringUtils::utf8ToWide(item);
+        SendMessageW(m_hwnd, CB_ADDSTRING, 0, (LPARAM)wideItem.c_str());
     }
     
     // Ustaw pierwszy element jako wybrany
     if (!m_items.empty()) {
-        SendMessage(m_hwnd, CB_SETCURSEL, 0, 0);
+        SendMessageW(m_hwnd, CB_SETCURSEL, 0, 0);
         m_selectedIndex = 0;
         m_text = m_items[0];
     } else {

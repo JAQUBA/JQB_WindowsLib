@@ -1,4 +1,5 @@
 #include "TextArea.h"
+#include "../../Util/StringUtils.h"
 #include <Windows.h>
 
 // Inicjalizacja statycznej zmiennej
@@ -18,30 +19,12 @@ TextArea::~TextArea() {
 
 // Konwersja z UTF-8 na Unicode (std::wstring)
 std::wstring TextArea::utf8ToWide(const std::string& text) const {
-    if (text.empty()) return std::wstring();
-    
-    // Oblicz wymaganą długość bufora
-    int size_needed = MultiByteToWideChar(CP_UTF8, 0, text.c_str(), (int)text.size(), NULL, 0);
-    std::wstring wstrTo(size_needed, 0);
-    
-    // Wykonaj konwersję
-    MultiByteToWideChar(CP_UTF8, 0, text.c_str(), (int)text.size(), &wstrTo[0], size_needed);
-    
-    return wstrTo;
+    return StringUtils::utf8ToWide(text);
 }
 
 // Konwersja z Unicode na UTF-8
 std::string TextArea::wideToUtf8(const std::wstring& wstr) const {
-    if (wstr.empty()) return std::string();
-    
-    // Oblicz wymaganą długość bufora
-    int size_needed = WideCharToMultiByte(CP_UTF8, 0, wstr.c_str(), (int)wstr.size(), NULL, 0, NULL, NULL);
-    std::string strTo(size_needed, 0);
-    
-    // Wykonaj konwersję
-    WideCharToMultiByte(CP_UTF8, 0, wstr.c_str(), (int)wstr.size(), &strTo[0], size_needed, NULL, NULL);
-    
-    return strTo;
+    return StringUtils::wideToUtf8(wstr);
 }
 
 std::string TextArea::getTextUTF8() const {

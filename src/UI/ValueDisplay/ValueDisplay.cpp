@@ -1,7 +1,10 @@
 #include "ValueDisplay.h"
+#include "../../Util/StringUtils.h"
 #include <string>
 #include <sstream>
 #include <iomanip>
+#include <vector>
+#include <cmath>  // Dla funkcji std::isinf()
 
 // Inicjalizacja statycznej zmiennej
 int ValueDisplay::s_nextId = 5000;
@@ -16,7 +19,7 @@ ValueDisplay::ValueDisplay(int x, int y, int width, int height)
     : m_x(x), m_y(y), m_width(width), m_height(height), m_hwnd(NULL),
       m_value(0.0), m_mode(0), m_range(0), 
       m_isAuto(false), m_isHold(false), m_isDelta(false),
-      m_prefix(""), m_unit(""),
+      m_prefix(L""), m_unit(L""),
       m_valueFont(NULL), m_unitFont(NULL), m_statusFont(NULL) {
     m_id = s_nextId++;
 }
@@ -47,19 +50,19 @@ ValueDisplay::~ValueDisplay() {
 // Rejestracja klasy okna i utworzenie kontrolki
 void ValueDisplay::create(HWND parent) {
     // Nazwa klasy okna
-    static const char* CLASS_NAME = "ValueDisplayClass";
+    static const wchar_t* CLASS_NAME = L"ValueDisplayClass";
     
     // Rejestracja klasy okna (tylko raz)
     static bool registered = false;
     if (!registered) {
-        WNDCLASS wc = {};
+        WNDCLASSW wc = {};
         wc.lpfnWndProc = WindowProc;
         wc.hInstance = _core.hInstance;
         wc.lpszClassName = CLASS_NAME;
         wc.hbrBackground = (HBRUSH)GetStockObject(BLACK_BRUSH);
         wc.hCursor = LoadCursor(NULL, IDC_ARROW);
         
-        if (!RegisterClass(&wc)) {
+        if (!RegisterClassW(&wc)) {
             MessageBoxW(NULL, L"Nie udało się zarejestrować klasy okna ValueDisplay!", L"Błąd", MB_ICONERROR);
             return;
         }
@@ -67,9 +70,9 @@ void ValueDisplay::create(HWND parent) {
     }
     
     // Utworzenie okna kontrolki
-    m_hwnd = CreateWindow(
+    m_hwnd = CreateWindowW(
         CLASS_NAME,
-        "",
+        L"",
         WS_CHILD | WS_VISIBLE,
         m_x, m_y,
         m_width, m_height,
@@ -129,7 +132,7 @@ void ValueDisplay::create(HWND parent) {
 }
 
 // Aktualizacja wartości wyświetlacza
-void ValueDisplay::updateValue(double value, const std::string& prefix, const std::string& unit) {
+void ValueDisplay::updateValue(double value, const std::wstring& prefix, const std::wstring& unit) {
     m_value = value;
     m_prefix = prefix;
     m_unit = unit;
@@ -203,48 +206,48 @@ void ValueDisplay::updateDisplay(double value, uint8_t mode, uint8_t range,
     // Aktualizacja jednostki na podstawie trybu
     switch (mode) {
         case 1:
-            m_unit = "mV"; // pomiar napięcia (mV)
+            m_unit = L"mV"; // pomiar napięcia (mV)
             break;
         case 3:
-            m_unit = "V";  // pomiar napięcia (V)
+            m_unit = L"V";  // pomiar napięcia (V)
             break;
         case 5:
-            m_unit = "A";  // pomiar prądu (A)
+            m_unit = L"A";  // pomiar prądu (A)
             break;
         case 7:
-            m_unit = "mA"; // pomiar prądu (mA)
+            m_unit = L"mA"; // pomiar prądu (mA)
             break;
         case 9:
-            m_unit = "μA"; // pomiar prądu (mikroampery)
+            m_unit = L"μA"; // pomiar prądu (mikroampery)
             break;
         case 10:
-            m_unit = "V";  // detektor napięcia
+            m_unit = L"V";  // detektor napięcia
             break;
         case 11:
-            m_unit = "Ω";  // pomiar oporności
+            m_unit = L"Ω";  // pomiar oporności
             break;
         case 12:
-            m_unit = "°C"; // pomiar temperatury
+            m_unit = L"°C"; // pomiar temperatury
             break;
         case 13:
-            m_unit = "Hz"; // pomiar częstotliwości
+            m_unit = L"Hz"; // pomiar częstotliwości
             break;
         case 14:
-            m_unit = "F";  // pomiar pojemności
+            m_unit = L"F";  // pomiar pojemności
             break;
         default:
-            m_unit = "";
+            m_unit = L"";
     }
     
     // Aktualizacja prefiksu na podstawie zakresu
     switch (range) {
-        case 0: m_prefix = "n"; break;     // nano
-        case 1: m_prefix = "μ"; break;     // micro
-        case 2: m_prefix = "m"; break;     // milli
-        case 3: m_prefix = ""; break;      // jednostka podstawowa
-        case 4: m_prefix = "k"; break;     // kilo
-        case 5: m_prefix = "M"; break;     // mega
-        default: m_prefix = ""; break;
+        case 0: m_prefix = L"n"; break;     // nano
+        case 1: m_prefix = L"μ"; break;     // micro
+        case 2: m_prefix = L"m"; break;     // milli
+        case 3: m_prefix = L""; break;      // jednostka podstawowa
+        case 4: m_prefix = L"k"; break;     // kilo
+        case 5: m_prefix = L"M"; break;     // mega
+        default: m_prefix = L""; break;
     }
     
     // Wymuszenie odświeżenia kontrolki
@@ -283,12 +286,12 @@ void ValueDisplay::drawDisplay() {
     SetBkMode(memDC, TRANSPARENT);
     
     // Formatowanie wartości jako string z dwoma miejscami po przecinku
-    std::stringstream ss;
-    std::string valueText;
+    std::wstringstream ss;
+    std::wstring valueText;
     
     // Sprawdzenie, czy wartość to nieskończoność (reprezentująca OL - Open Line)
     if (std::isinf(m_value)) {
-        valueText = "OL"; // Przekroczenie zakresu pomiaru
+        valueText = L"OL"; // Przekroczenie zakresu pomiaru
     } else {
         ss << std::fixed << std::setprecision(2) << m_value;
         valueText = ss.str();
@@ -296,48 +299,49 @@ void ValueDisplay::drawDisplay() {
     
     // Obliczanie pozycji tekstu
     SIZE valueSize;
-    GetTextExtentPoint32A(memDC, valueText.c_str(), valueText.length(), &valueSize);
+    GetTextExtentPoint32W(memDC, valueText.c_str(), valueText.length(), &valueSize);
     int valueX = (clientRect.right - valueSize.cx) / 2;
     int valueY = (clientRect.bottom - valueSize.cy) / 2 - valueSize.cy / 4; // Lekko przesunięte do góry
     
     // Rysowanie wartości
-    TextOutA(memDC, valueX, valueY, valueText.c_str(), valueText.length());
+    TextOutW(memDC, valueX, valueY, valueText.c_str(), valueText.length());
     
     // Rysowanie jednostki z prefiksem (mniejszą czcionką)
     SelectObject(memDC, m_unitFont);
-    std::string unitText = m_prefix + m_unit;
+    std::wstring unitText = m_prefix + m_unit;
+    
     SIZE unitSize;
-    GetTextExtentPoint32A(memDC, unitText.c_str(), unitText.length(), &unitSize);
+    GetTextExtentPoint32W(memDC, unitText.c_str(), unitText.length(), &unitSize);
     int unitX = valueX + valueSize.cx + 5; // 5 pikseli odstępu
     int unitY = valueY + valueSize.cy - unitSize.cy; // Wyrównanie do dolnej linii wartości
     
-    TextOutA(memDC, unitX, unitY, unitText.c_str(), unitText.length());
+    TextOutW(memDC, unitX, unitY, unitText.c_str(), unitText.length());
     
     // Rysowanie statusu (AUTO, HOLD, DELTA)
     SelectObject(memDC, m_statusFont);
-    std::string statusText = "";
-    if (m_isAuto) statusText += "AUTO ";
-    if (m_isHold) statusText += "HOLD ";
-    if (m_isDelta) statusText += "DELTA ";
+    std::wstring statusText = L"";
+    if (m_isAuto) statusText += L"AUTO ";
+    if (m_isHold) statusText += L"HOLD ";
+    if (m_isDelta) statusText += L"DELTA ";
     
     if (!statusText.empty()) {
         SIZE statusSize;
-        GetTextExtentPoint32A(memDC, statusText.c_str(), statusText.length(), &statusSize);
+        GetTextExtentPoint32W(memDC, statusText.c_str(), statusText.length(), &statusSize);
         int statusX = 10; // 10 pikseli od lewej krawędzi
         int statusY = 10; // 10 pikseli od górnej krawędzi
         
-        TextOutA(memDC, statusX, statusY, statusText.c_str(), statusText.length());
+        TextOutW(memDC, statusX, statusY, statusText.c_str(), statusText.length());
     }
     
     // Rysowanie trybu pomiaru
-    std::string modeText = getModeString();
+    std::wstring modeText = getModeString();
     if (!modeText.empty()) {
         SIZE modeSize;
-        GetTextExtentPoint32A(memDC, modeText.c_str(), modeText.length(), &modeSize);
+        GetTextExtentPoint32W(memDC, modeText.c_str(), modeText.length(), &modeSize);
         int modeX = clientRect.right - modeSize.cx - 10; // 10 pikseli od prawej krawędzi
         int modeY = 10; // 10 pikseli od górnej krawędzi
         
-        TextOutA(memDC, modeX, modeY, modeText.c_str(), modeText.length());
+        TextOutW(memDC, modeX, modeY, modeText.c_str(), modeText.length());
     }
     
     // Przywróć oryginalną czcionkę
@@ -355,32 +359,32 @@ void ValueDisplay::drawDisplay() {
 }
 
 // Konwersja trybu na tekst
-std::string ValueDisplay::getModeString() const {
+std::wstring ValueDisplay::getModeString() const {
     switch (m_mode) {
-        case 1: return "DC mV";
-        case 3: return "DC V";
-        case 5: return "DC A";
-        case 7: return "DC mA";
-        case 9: return "DC μA";
-        case 10: return "Voltage Detect";
-        case 11: return "Resistance";
-        case 12: return "Temperature";
-        case 13: return "Frequency";
-        case 14: return "Capacitance";
-        default: return "";
+        case 1: return L"DC mV";
+        case 3: return L"DC V";
+        case 5: return L"DC A";
+        case 7: return L"DC mA";
+        case 9: return L"DC μA";
+        case 10: return L"Voltage Detect";
+        case 11: return L"Resistance";
+        case 12: return L"Temperature";
+        case 13: return L"Frequency";
+        case 14: return L"Capacitance";
+        default: return L"";
     }
 }
 
 // Konwersja zakresu na tekst
-std::string ValueDisplay::getRangeString() const {
+std::wstring ValueDisplay::getRangeString() const {
     switch (m_range) {
-        case 0: return "nano";
-        case 1: return "micro";
-        case 2: return "milli";
-        case 3: return "base";
-        case 4: return "kilo";
-        case 5: return "mega";
-        default: return "";
+        case 0: return L"nano";
+        case 1: return L"micro";
+        case 2: return L"milli";
+        case 3: return L"base";
+        case 4: return L"kilo";
+        case 5: return L"mega";
+        default: return L"";
     }
 }
 
