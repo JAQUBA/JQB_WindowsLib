@@ -2,13 +2,14 @@
 #define VALUE_DISPLAY_H
 
 #include "Core.h"
+#include "../UIComponent.h"
 #include <string>
 #include <cstdint>
 #include <map>
 #include <functional>
 
 // Klasa do uniwersalnego wyświetlania wartości z możliwością konfiguracji
-class ValueDisplay {
+class ValueDisplay : public UIComponent {
 public:
     // Struktura konfiguracji wyświetlacza
     struct DisplayConfig {
@@ -27,9 +28,9 @@ public:
     using ValueFormatter = std::function<std::wstring(double value, int precision)>;
 
     ValueDisplay(int x, int y, int width, int height);
-    ~ValueDisplay();
+    ~ValueDisplay() override;
 
-    void create(HWND parent);
+    void create(HWND parent) override;
     
     // Podstawowe metody aktualizacji
     void updateValue(double value, const std::wstring& prefix = L"", const std::wstring& unit = L"");
@@ -65,8 +66,8 @@ public:
     int getY() const { return m_y; }
     int getWidth() const { return m_width; }
     int getHeight() const { return m_height; }
-    HWND getHandle() const { return m_hwnd; }
-    int getId() const { return m_id; }
+    HWND getHandle() const override { return m_hwnd; }
+    int getId() const override { return m_id; }
     double getValue() const { return m_value; }
     uint8_t getMode() const { return m_mode; }
     uint8_t getRange() const { return m_range; }

@@ -2,15 +2,16 @@
 #define TEXT_AREA_H
 
 #include "Core.h"
+#include "../UIComponent.h"
 #include <string>
 #include <vector>
 
-class TextArea {
+class TextArea : public UIComponent {
 public:
     TextArea(int x, int y, int width, int height);
-    ~TextArea();
+    ~TextArea() override;
 
-    void create(HWND parent);
+    void create(HWND parent) override;
     void setText(const char* text);
     void setText(const std::string& text);
     void setText(const wchar_t* text);
@@ -26,8 +27,8 @@ public:
     int getHeight() const { return m_height; }
     const wchar_t* getText() const { return m_text.c_str(); }
     std::string getTextUTF8() const;
-    HWND getHandle() const { return m_hwnd; }
-    int getId() const { return m_id; }
+    HWND getHandle() const override { return m_hwnd; }
+    int getId() const override { return m_id; }
 
 private:
     // Konwersje między formatami UTF-8 a Unicode

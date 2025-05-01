@@ -2,17 +2,18 @@
 #define SELECT_H
 
 #include "Core.h"
+#include "../UIComponent.h"
 #include <string>
 #include <functional>
 #include <vector>
 
-class Select {
+class Select : public UIComponent {
 public:
     Select(int x, int y, int width, int height, const char* text, std::function<void(Select*)> onChange);
-    ~Select();
+    ~Select() override;
 
-    void create(HWND parent);
-    void handleSelection();
+    void create(HWND parent) override;
+    void handleSelection() override;
     void addItem(const char* item);
     void setText(const char* text);
     void clear();
@@ -25,8 +26,8 @@ public:
     int getWidth() const { return m_width; }
     int getHeight() const { return m_height; }
     const char* getText() const { return m_text.c_str(); }
-    HWND getHandle() const { return m_hwnd; }
-    int getId() const { return m_id; }
+    HWND getHandle() const override { return m_hwnd; }
+    int getId() const override { return m_id; }
     
 private:
     int m_x;

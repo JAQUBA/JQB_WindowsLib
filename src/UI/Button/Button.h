@@ -2,6 +2,7 @@
 #define BUTTON_H
 
 #include "Core.h"
+#include "../UIComponent.h"
 #include <string>
 #include <functional>
 
@@ -13,15 +14,15 @@ void checkForLongPresses();
 // Deklaracja wyprzedzająca dla funkcji przyjaciela
 LRESULT CALLBACK CustomButtonProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam);
 
-class Button {
+class Button : public UIComponent {
 public:
     Button(int x, int y, int width, int height, const char* text, 
            std::function<void(Button*)> onClick,
            std::function<void(Button*)> onLongClick = nullptr);
-    ~Button();
+    ~Button() override;
 
-    void create(HWND parent);
-    void handleClick();
+    void create(HWND parent) override;
+    void handleClick() override;
     void handleLongClick();
 
     // Gettery
@@ -30,8 +31,8 @@ public:
     int getWidth() const { return m_width; }
     int getHeight() const { return m_height; }
     const char* getText() const { return m_text.c_str(); }
-    HWND getHandle() const { return m_hwnd; }
-    int getId() const { return m_id; }
+    HWND getHandle() const override { return m_hwnd; }
+    int getId() const override { return m_id; }
 
     // Deklaracje funkcji zaprzyjaźnionych
     friend void startButtonPress(int buttonId);

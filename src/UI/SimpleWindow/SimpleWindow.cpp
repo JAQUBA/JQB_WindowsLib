@@ -4,6 +4,7 @@
 #include "../Select/Select.h"
 #include "../TextArea/TextArea.h"
 #include "../ValueDisplay/ValueDisplay.h"
+#include "../Chart/Chart.h"
 #include "../../Util/StringUtils.h"
 
 // Inicjalizacja statycznej zmiennej
@@ -18,31 +19,19 @@ SimpleWindow::SimpleWindow(int width, int height, const char *title, int iconId)
 }
 
 SimpleWindow::~SimpleWindow() {
-    // Usunięcie kontrolek
-    for (auto button : m_buttons) {
-        delete button;
+    // Usunięcie wszystkich komponentów UI z głównego wektora
+    for (auto component : m_components) {
+        delete component;
     }
-    m_buttons.clear();
-
-    for (auto label : m_labels) {
-        delete label;
-    }
-    m_labels.clear();
-
-    for (auto select : m_selects) {
-        delete select;
-    }
-    m_selects.clear();
-
-    for (auto textArea : m_textAreas) {
-        delete textArea;
-    }
-    m_textAreas.clear();
+    m_components.clear();
     
-    for (auto valueDisplay : m_valueDisplays) {
-        delete valueDisplay;
-    }
+    // Czyszczę pozostałe wektory bez usuwania obiektów (są już usunięte powyżej)
+    m_buttons.clear();
+    m_labels.clear();
+    m_selects.clear();
+    m_textAreas.clear();
     m_valueDisplays.clear();
+    m_charts.clear();
 
     // Zniszczenie okna
     if (m_hwnd) {
@@ -101,34 +90,43 @@ void SimpleWindow::close() {
     PostMessage(m_hwnd, WM_CLOSE, 0, 0);
 }
 
-// Metoda dodająca przycisk do okna
+// Nowa główna metoda do dodawania komponentów UI
+void SimpleWindow::add(UIComponent* component) {
+    if (component) {
+        component->create(m_hwnd);
+        m_components.push_back(component);
+    }
+}
+
+// Metody dla zachowania kompatybilności wstecznej
 void SimpleWindow::add(Button* button) {
-    button->create(m_hwnd);
+    add(static_cast<UIComponent*>(button));
     m_buttons.push_back(button);
 }
 
-// Metoda dodająca etykietę do okna
 void SimpleWindow::add(Label* label) {
-    label->create(m_hwnd);
+    add(static_cast<UIComponent*>(label));
     m_labels.push_back(label);
 }
 
-// Metoda dodająca komponent Select do okna
 void SimpleWindow::add(Select* select) {
-    select->create(m_hwnd);
+    add(static_cast<UIComponent*>(select));
     m_selects.push_back(select);
 }
 
-// Metoda dodająca komponent TextArea do okna
 void SimpleWindow::add(TextArea* textArea) {
-    textArea->create(m_hwnd);
+    add(static_cast<UIComponent*>(textArea));
     m_textAreas.push_back(textArea);
 }
 
-// Metoda dodająca komponent ValueDisplay do okna
 void SimpleWindow::add(ValueDisplay* valueDisplay) {
-    valueDisplay->create(m_hwnd);
+    add(static_cast<UIComponent*>(valueDisplay));
     m_valueDisplays.push_back(valueDisplay);
+}
+
+void SimpleWindow::add(Chart* chart) {
+    add(static_cast<UIComponent*>(chart));
+    m_charts.push_back(chart);
 }
 
 LRESULT CALLBACK SimpleWindow::WindowProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam) {
@@ -138,23 +136,31 @@ LRESULT CALLBACK SimpleWindow::WindowProc(HWND hwnd, UINT uMsg, WPARAM wParam, L
             int controlId = LOWORD(wParam);
             int notificationCode = HIWORD(wParam);
             
-            // Obsługa komunikatów przycisków
-            if (notificationCode == BN_CLICKED) {
-                // Zakończenie naciśnięcia przycisku
-                endButtonPress(controlId);
-            }
-            // Obsługa komunikatów przycisków - naciśnięcie
-            else if (notificationCode == BN_PUSHED) {
-                // Rozpoczęcie naciśnięcia przycisku
-                startButtonPress(controlId);
-            }
-            // Sprawdzenie, czy to zmiana wyboru w kontrolce Select
-            else if (notificationCode == CBN_SELCHANGE) {
-                if (s_instance) {
-                    for (auto select : s_instance->m_selects) {
-                        if (select->getId() == controlId) {
-                            select->handleSelection();
-                            return 0;
+            if (s_instance) {
+                // Obsługa kliknięć i innych zdarzeń dla wszystkich komponentów
+                if (notificationCode == BN_CLICKED) {
+                    // Zakończenie naciśnięcia przycisku
+                    endButtonPress(controlId);
+                    
+                    // Wywołanie metody handleClick() odpowiedniego komponentu
+                    for (auto component : s_instance->m_components) {
+                        if (component->getId() == controlId) {
+                            component->handleClick();
+                            break;
+                        }
+                    }
+                }
+                // Obsługa komunikatów przycisków - naciśnięcie
+                else if (notificationCode == BN_PUSHED) {
+                    // Rozpoczęcie naciśnięcia przycisku
+                    startButtonPress(controlId);
+                }
+                // Sprawdzenie, czy to zmiana wyboru w kontrolce Select
+                else if (notificationCode == CBN_SELCHANGE) {
+                    for (auto component : s_instance->m_components) {
+                        if (component->getId() == controlId) {
+                            component->handleSelection();
+                            break;
                         }
                     }
                 }
