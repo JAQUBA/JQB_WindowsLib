@@ -44,6 +44,9 @@ public:
         m_manualMaxY = maxY;
         m_autoScale = false;
     }
+    
+    // Ustawienie limitu odświeżania
+    void setRefreshRate(int millisecondsInterval) { m_refreshInterval = millisecondsInterval; }
 
 private:
     int m_x;
@@ -65,6 +68,11 @@ private:
     bool m_autoScale = true;
     double m_manualMinY = 0.0;
     double m_manualMaxY = 10.0;
+    
+    // Zmienne do ograniczania częstotliwości odświeżania
+    int m_refreshInterval = 100; // Domyślnie 100ms (10 FPS)
+    std::chrono::steady_clock::time_point m_lastRefreshTime;
+    bool m_dataChanged = false; // Flaga wskazująca, że dane się zmieniły od ostatniego odświeżenia
     
     // Pomocnicze funkcje do rysowania
     void drawGrid(HDC hdc, const RECT& rect);

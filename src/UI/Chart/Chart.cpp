@@ -93,9 +93,20 @@ void Chart::addDataPoint(double value, const std::wstring& unit) {
     // Usunięcie starych punktów danych
     cleanOldDataPoints();
     
-    // Odświeżenie wykresu
-    if (m_hwnd) {
-        InvalidateRect(m_hwnd, NULL, TRUE);
+    // Oznacz, że dane się zmieniły
+    m_dataChanged = true;
+    
+    // Odświeżenie wykresu z ograniczeniem częstotliwości
+    auto now = std::chrono::steady_clock::now();
+    auto elapsed = std::chrono::duration_cast<std::chrono::milliseconds>(now - m_lastRefreshTime).count();
+    
+    if (elapsed >= m_refreshInterval) {
+        m_lastRefreshTime = now;
+        m_dataChanged = false;
+        
+        if (m_hwnd) {
+            InvalidateRect(m_hwnd, NULL, TRUE);
+        }
     }
 }
 

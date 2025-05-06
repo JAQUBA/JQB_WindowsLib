@@ -24,3 +24,13 @@ if sys.platform == "win32":
     
     # Dodaj plik .res do procesu linkowania
     env.Append(LINKFLAGS=[res_file])
+    
+    # Dodaj flagę subsystem,windows przenosząc ją z platformio.ini
+    print("Dodawanie flagi subsystem,windows")
+    env.Append(LINKFLAGS=["-Wl,-subsystem,windows"])
+    
+    # Dodaj wszystkie potrzebne biblioteki dla komponentów UI i funkcjonalności
+    print("Dodawanie bibliotek do procesu linkowania")
+    libraries = ["gdi32", "comctl32", "setupapi", "gdiplus", "shlwapi"]
+    env.Append(LIBS=libraries)
+    print(f"Dodano następujące biblioteki: {', '.join(libraries)}")

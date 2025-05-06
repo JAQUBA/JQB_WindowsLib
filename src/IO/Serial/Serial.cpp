@@ -21,7 +21,7 @@ bool Serial::init() {
 bool Serial::connect() {
     // Sprawdź, czy wybrano port
     if (m_portName.empty()) {
-        MessageBoxW(NULL, L"Nie wybrano portu COM!", L"Błąd", MB_ICONERROR);
+        MessageBoxW(NULL, L"Nie wybrano portu COM! Wybierz port z listy przed próbą połączenia.", L"Błąd połączenia", MB_ICONERROR);
         return false;
     }
 
@@ -43,7 +43,19 @@ bool Serial::connect() {
     );
 
     if (m_serialHandle == INVALID_HANDLE_VALUE) {
-        MessageBoxW(NULL, L"Nie udało się otworzyć portu COM!", L"Błąd", MB_ICONERROR);
+        DWORD error = GetLastError();
+        std::wstring errorMsg = L"Nie udało się otworzyć portu " + StringUtils::utf8ToWide(m_portName) + L"!\n";
+        
+        // Dodanie szczegółowego opisu błędu
+        if (error == ERROR_FILE_NOT_FOUND) {
+            errorMsg += L"Port nie istnieje lub jest niedostępny.";
+        } else if (error == ERROR_ACCESS_DENIED) {
+            errorMsg += L"Dostęp zabroniony. Port może być już używany przez inną aplikację.";
+        } else {
+            errorMsg += L"Kod błędu: " + std::to_wstring(error);
+        }
+        
+        MessageBoxW(NULL, errorMsg.c_str(), L"Błąd połączenia", MB_ICONERROR);
         return false;
     }
 
@@ -52,19 +64,26 @@ bool Serial::connect() {
     dcbSerialParams.DCBlength = sizeof(dcbSerialParams);
 
     if (!GetCommState(m_serialHandle, &dcbSerialParams)) {
-        MessageBoxW(NULL, L"Błąd podczas pobierania stanu portu COM!", L"Błąd", MB_ICONERROR);
+        DWORD error = GetLastError();
+        MessageBoxW(NULL, (L"Błąd podczas pobierania stanu portu COM! Kod błędu: " + std::to_wstring(error)).c_str(), L"Błąd połączenia", MB_ICONERROR);
         CloseHandle(m_serialHandle);
         m_serialHandle = INVALID_HANDLE_VALUE;
         return false;
     }
 
-    dcbSerialParams.BaudRate = CBR_9600;
-    dcbSerialParams.ByteSize = 8;
-    dcbSerialParams.StopBits = ONESTOPBIT;
-    dcbSerialParams.Parity = NOPARITY;
+    // Konfiguracja stałych port COM dla urządzenia OWON OW18B
+    dcbSerialParams.BaudRate = CBR_9600;  // 9600 bps
+    dcbSerialParams.ByteSize = 8;         // 8 bitów danych
+    dcbSerialParams.StopBits = ONESTOPBIT;// 1 bit stopu
+    dcbSerialParams.Parity = NOPARITY;    // Brak parzystości
+    
+    // Dodatkowe ustawienia dla lepszej stabilności
+    dcbSerialParams.fDtrControl = DTR_CONTROL_ENABLE;  // Sygnał DTR włączony
+    dcbSerialParams.fRtsControl = RTS_CONTROL_ENABLE;  // Sygnał RTS włączony
 
     if (!SetCommState(m_serialHandle, &dcbSerialParams)) {
-        MessageBoxW(NULL, L"Błąd podczas konfiguracji portu COM!", L"Błąd", MB_ICONERROR);
+        DWORD error = GetLastError();
+        MessageBoxW(NULL, (L"Błąd podczas konfiguracji portu COM! Kod błędu: " + std::to_wstring(error)).c_str(), L"Błąd połączenia", MB_ICONERROR);
         CloseHandle(m_serialHandle);
         m_serialHandle = INVALID_HANDLE_VALUE;
         return false;
@@ -79,11 +98,15 @@ bool Serial::connect() {
     timeouts.WriteTotalTimeoutMultiplier = 10;
 
     if (!SetCommTimeouts(m_serialHandle, &timeouts)) {
-        MessageBoxW(NULL, L"Błąd podczas konfiguracji timeoutów!", L"Błąd", MB_ICONERROR);
+        DWORD error = GetLastError();
+        MessageBoxW(NULL, (L"Błąd podczas konfiguracji timeoutów! Kod błędu: " + std::to_wstring(error)).c_str(), L"Błąd połączenia", MB_ICONERROR);
         CloseHandle(m_serialHandle);
         m_serialHandle = INVALID_HANDLE_VALUE;
         return false;
     }
+
+    // Czyszczenie buforów po otwarciu portu
+    PurgeComm(m_serialHandle, PURGE_TXCLEAR | PURGE_RXCLEAR);
 
     m_connected = true;
     
@@ -211,20 +234,49 @@ bool Serial::send(const std::vector<uint8_t>& data) {
 void Serial::readThreadFunction() {
     const size_t bufferSize = 256;
     std::vector<uint8_t> buffer;
+    int consecutiveErrors = 0;
+    const int maxConsecutiveErrors = 10;
     
     while (!m_stopReadThread) {
-        // Sprawdź, czy port jest otwarty
-        if (m_serialHandle != INVALID_HANDLE_VALUE && m_connected) {
-            // Spróbuj odczytać dane
-            if (read(buffer, bufferSize) && !buffer.empty()) {
-                // Jeśli zarejestrowano callback, wywołaj go z odczytanymi danymi
-                if (m_onReceiveCallback) {
-                    m_onReceiveCallback(buffer);
+        try {
+            // Sprawdź, czy port jest otwarty
+            if (m_serialHandle != INVALID_HANDLE_VALUE && m_connected) {
+                // Sprawdź dostępne dane przed odczytem
+                DWORD errors;
+                COMSTAT stat;
+                if (ClearCommError(m_serialHandle, &errors, &stat) && stat.cbInQue > 0) {
+                    // Ograniczenie rozmiaru bufora do dostępnych danych
+                    size_t bytesToRead = std::min(bufferSize, static_cast<size_t>(stat.cbInQue));
+                    
+                    // Spróbuj odczytać dane
+                    if (read(buffer, bytesToRead) && !buffer.empty()) {
+                        // Jeśli zarejestrowano callback, wywołaj go z odczytanymi danymi
+                        if (m_onReceiveCallback) {
+                            m_onReceiveCallback(buffer);
+                        }
+                        consecutiveErrors = 0; // Zresetuj licznik błędów po udanym odczycie
+                    }
+                } else if (errors > 0) {
+                    // Obsługa błędów komunikacyjnych
+                    consecutiveErrors++;
+                    
+                    if (consecutiveErrors >= maxConsecutiveErrors) {
+                        // Po zbyt wielu błędach, zamknij i ponownie otwórz port
+                        disconnect();
+                        std::this_thread::sleep_for(std::chrono::milliseconds(500));
+                        connect();
+                        consecutiveErrors = 0;
+                    }
                 }
             }
         }
+        catch (const std::exception&) {
+            // Obsługa wyjątków
+            consecutiveErrors++;
+            std::this_thread::sleep_for(std::chrono::milliseconds(100));
+        }
         
         // Krótkie opóźnienie, aby nie obciążać procesora
-        std::this_thread::sleep_for(std::chrono::milliseconds(50));
+        std::this_thread::sleep_for(std::chrono::milliseconds(10));
     }
 }
