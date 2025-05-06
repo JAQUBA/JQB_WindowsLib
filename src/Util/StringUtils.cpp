@@ -9,18 +9,20 @@ namespace StringUtils {
             return std::wstring();
         }
         
-        // Oblicz wymagany rozmiar bufora
-        int size_needed = MultiByteToWideChar(CP_UTF8, 0, utf8.c_str(), (int)utf8.size(), NULL, 0);
+        // Oblicz wymagany rozmiar bufora - dodaj 1 na znak NULL na końcu
+        int size_needed = MultiByteToWideChar(CP_UTF8, 0, utf8.c_str(), -1, NULL, 0);
         if (size_needed <= 0) {
             return std::wstring();
         }
         
-        std::wstring wstrTo(size_needed, 0);
+        // Alokuj bufor odpowiedniej wielkości (z NULL na końcu)
+        std::vector<wchar_t> buffer(size_needed);
         
         // Wykonaj konwersję
-        MultiByteToWideChar(CP_UTF8, 0, utf8.c_str(), (int)utf8.size(), &wstrTo[0], size_needed);
+        MultiByteToWideChar(CP_UTF8, 0, utf8.c_str(), -1, &buffer[0], size_needed);
         
-        return wstrTo;
+        // Konwertuj na std::wstring (bez NULL na końcu)
+        return std::wstring(buffer.data());
     }
     
     // Konwersja z Unicode (UTF-16) na UTF-8

@@ -41,7 +41,7 @@ class SimpleWindow {
 
         int m_width;
         int m_height;
-        const char *m_title;
+        std::wstring m_titleW;  // Zmiana z char* na std::wstring
         int m_iconId;
 
         // Zbiorczy wektor dla wszystkich komponentów UI

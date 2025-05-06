@@ -14,7 +14,13 @@ SimpleWindow* SimpleWindow::s_instance = nullptr;
 static const UINT_PTR LONG_PRESS_TIMER_ID = 1000;
 
 SimpleWindow::SimpleWindow(int width, int height, const char *title, int iconId)
-    : m_width(width), m_height(height), m_title(title), m_iconId(iconId), m_hwnd(NULL) {
+    : m_width(width), m_height(height), m_iconId(iconId), m_hwnd(NULL) {
+    // Konwersja tytułu z UTF-8 na UTF-16 i przechowywanie jako wstring
+    if (title && title[0] != '\0') {
+        m_titleW = StringUtils::utf8ToWide(title);
+    } else {
+        m_titleW = L"Window";
+    }
     s_instance = this;
 }
 
@@ -42,9 +48,7 @@ SimpleWindow::~SimpleWindow() {
 }
 
 bool SimpleWindow::init() {
-    // Konwersja tytułu z UTF-8 na UTF-16
-    std::wstring wideTitle = StringUtils::utf8ToWide(m_title);
-    
+    // Konsekwentne używanie interfejsu Unicode (W)
     WNDCLASSW mainWindow = {};
     mainWindow.lpfnWndProc = WindowProc;
     mainWindow.hInstance = _core.hInstance;
@@ -58,31 +62,41 @@ bool SimpleWindow::init() {
     } else {
         mainWindow.hIcon = LoadIcon(NULL, IDI_APPLICATION);
     }
-
+    
+    // Wyrejestruj klasę, jeśli już istnieje (również wersja W)
+    UnregisterClassW(L"OWON_OW18B_Window", _core.hInstance);
+    
     if (!RegisterClassW(&mainWindow)) {
         return false;
     }
-
+    
+    // Obliczanie rzeczywistego rozmiaru okna
+    RECT windowRect = { 0, 0, m_width, m_height };
+    AdjustWindowRect(&windowRect, WS_OVERLAPPEDWINDOW, FALSE);
+    int actualWidth = windowRect.right - windowRect.left;
+    int actualHeight = windowRect.bottom - windowRect.top;
+    
+    // Tworzenie okna z użyciem funkcji Unicode (CreateWindowW)
     m_hwnd = CreateWindowW(
         L"OWON_OW18B_Window",
-        wideTitle.c_str(),
+        m_titleW.c_str(),  // Użycie wstring zamiast char*
         WS_OVERLAPPEDWINDOW,
         CW_USEDEFAULT, CW_USEDEFAULT,
-        m_width, m_height,
+        actualWidth, actualHeight,
         NULL,
         NULL,
         _core.hInstance,
-        this
+        NULL
     );
-
+    
     if (m_hwnd == NULL) {
         MessageBoxW(NULL, L"Nie udało się utworzyć okna", L"Błąd", MB_OK | MB_ICONERROR);
-        return 0;
+        return false;
     }
-
+    
     ShowWindow(m_hwnd, _core.nCmdShow);
     UpdateWindow(m_hwnd);
-
+    
     return true;
 }
 
@@ -190,6 +204,6 @@ LRESULT CALLBACK SimpleWindow::WindowProc(HWND hwnd, UINT uMsg, WPARAM wParam, L
             return 0;
             
         default:
-            return DefWindowProc(hwnd, uMsg, wParam, lParam);
+            return DefWindowProcW(hwnd, uMsg, wParam, lParam); // Zmiana na DefWindowProcW
     }  // Zamknięcie switch
 }  // Zamknięcie funkcji WindowProc
