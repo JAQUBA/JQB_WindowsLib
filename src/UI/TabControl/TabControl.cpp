@@ -74,13 +74,19 @@ int TabControl::addTab(const char* title) {
     // Konwersja tytułu z UTF-8 na UTF-16
     std::wstring wideTitle = StringUtils::utf8ToWide(title);
     
+    // Jeśli konwersja z UTF-8 nie działa poprawnie dla polskich znaków, spróbuj ANSI
+    if (wideTitle.empty() || wideTitle.find(L'�') != std::wstring::npos) {
+        wideTitle = StringUtils::ansiToWide(title);
+    }
+    
     // Przygotuj strukturę zakładki
     TCITEMW tci = {0};
     tci.mask = TCIF_TEXT;
     tci.pszText = const_cast<LPWSTR>(wideTitle.c_str());
+    tci.cchTextMax = (int)wideTitle.length(); // Dodanie długości tekstu
     
     // Dodaj zakładkę do kontrolki
-    int index = TabCtrl_InsertItem(m_hwnd, m_tabPages.size(), &tci);
+    int index = (int)SendMessageW(m_hwnd, TCM_INSERTITEMW, (WPARAM)m_tabPages.size(), (LPARAM)&tci);
     if (index < 0) {
         return -1;
     }
@@ -193,13 +199,19 @@ void TabControl::setTabTitle(int index, const char* title) {
     // Konwersja tytułu z UTF-8 na UTF-16
     std::wstring wideTitle = StringUtils::utf8ToWide(title);
     
+    // Jeśli konwersja z UTF-8 nie działa poprawnie dla polskich znaków, spróbuj ANSI
+    if (wideTitle.empty() || wideTitle.find(L'�') != std::wstring::npos) {
+        wideTitle = StringUtils::ansiToWide(title);
+    }
+    
     // Przygotuj strukturę zakładki
     TCITEMW tci = {0};
     tci.mask = TCIF_TEXT;
     tci.pszText = const_cast<LPWSTR>(wideTitle.c_str());
+    tci.cchTextMax = (int)wideTitle.length(); // Dodanie długości tekstu
     
-    // Zaktualizuj tekst zakładki
-    TabCtrl_SetItem(m_hwnd, index, &tci);
+    // Zaktualizuj tekst zakładki używając bezpośrednio SendMessageW
+    SendMessageW(m_hwnd, TCM_SETITEMW, (WPARAM)index, (LPARAM)&tci);
 }
 
 std::string TabControl::getTabTitle(int index) const {

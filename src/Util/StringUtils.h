@@ -15,6 +15,9 @@ namespace StringUtils {
     // Konwersja z wstring na string
     std::string wstringToString(const std::wstring& wstr);
     
+    // Konwersja z ANSI na Unicode (UTF-16)
+    std::wstring ansiToWide(const std::string& ansi);
+    
     // Wyodrębnia nazwę portu COM z tekstu (np. "USB Serial Port (COM3)" -> "COM3")
     std::string extractComPort(const char* text);
 }
