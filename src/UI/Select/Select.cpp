@@ -96,6 +96,15 @@ void Select::setText(const char* text) {
     if (m_hwnd) {
         std::wstring wideText = StringUtils::utf8ToWide(m_text);
         SetWindowTextW(m_hwnd, wideText.c_str());
+        
+        // Znajdź i ustaw odpowiedni element na liście
+        for (size_t i = 0; i < m_items.size(); i++) {
+            if (m_items[i] == m_text) {
+                SendMessageW(m_hwnd, CB_SETCURSEL, i, 0);
+                m_selectedIndex = static_cast<int>(i);
+                break;
+            }
+        }
     }
 }
 
@@ -120,6 +129,9 @@ void Select::link(const std::vector<std::string>* items) {
 void Select::updateItems() {
     if (!m_linkedItems) return;
     
+    // Zapisz aktualnie wybrany tekst
+    std::string selectedText = m_text;
+    
     // Wyczyść aktualną listę
     SendMessageW(m_hwnd, CB_RESETCONTENT, 0, 0);
     m_items.clear();
@@ -131,12 +143,26 @@ void Select::updateItems() {
         SendMessageW(m_hwnd, CB_ADDSTRING, 0, (LPARAM)wideItem.c_str());
     }
     
-    // Ustaw pierwszy element jako wybrany
-    if (!m_items.empty()) {
+    // Sprawdź, czy zapisany tekst znajduje się na liście
+    bool foundSelectedText = false;
+    if (!selectedText.empty()) {
+        for (size_t i = 0; i < m_items.size(); i++) {
+            if (m_items[i] == selectedText) {
+                SendMessageW(m_hwnd, CB_SETCURSEL, i, 0);
+                m_selectedIndex = static_cast<int>(i);
+                m_text = selectedText;
+                foundSelectedText = true;
+                break;
+            }
+        }
+    }
+    
+    // Jeśli nie znaleziono zapisanego tekstu, ustaw pierwszy element jako wybrany
+    if (!foundSelectedText && !m_items.empty()) {
         SendMessageW(m_hwnd, CB_SETCURSEL, 0, 0);
         m_selectedIndex = 0;
         m_text = m_items[0];
-    } else {
+    } else if (m_items.empty()) {
         m_selectedIndex = -1;
         m_text = "";
     }

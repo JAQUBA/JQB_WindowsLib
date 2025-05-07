@@ -6,6 +6,7 @@
 #include "../ValueDisplay/ValueDisplay.h"
 #include "../Chart/Chart.h"
 #include "../../Util/StringUtils.h"
+#include <CommCtrl.h>  // Dodany plik nagłówkowy dla TCN_SELCHANGE
 
 // Inicjalizacja statycznej zmiennej
 SimpleWindow* SimpleWindow::s_instance = nullptr;
@@ -184,6 +185,26 @@ LRESULT CALLBACK SimpleWindow::WindowProc(HWND hwnd, UINT uMsg, WPARAM wParam, L
             if (controlId == 1) {
                 // Zamknij okno
                 PostMessage(hwnd, WM_CLOSE, 0, 0);
+            }
+            return 0;
+        }
+        
+        // Dodanie obsługi WM_NOTIFY dla kontrolek takich jak TabControl
+        case WM_NOTIFY: {
+            NMHDR* nmhdr = (NMHDR*)lParam;
+            
+            // Obsługa kliknięcia na zakładkę
+            if (nmhdr->code == TCN_SELCHANGE) {
+                // Znajdź kontrolkę TabControl o tym ID
+                if (s_instance) {
+                    for (auto component : s_instance->m_components) {
+                        if (component->getId() == (int)nmhdr->idFrom) {
+                            // Wywołaj handleSelection na znalezionej kontrolce
+                            component->handleSelection();
+                            break;
+                        }
+                    }
+                }
             }
             return 0;
         }

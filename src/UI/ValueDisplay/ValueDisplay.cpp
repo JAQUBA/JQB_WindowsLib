@@ -406,11 +406,11 @@ void ValueDisplay::drawDisplay() {
     // Formatowanie wartości jako string
     std::wstring valueText = formatValue(m_value);
     
-    // Obliczanie pozycji tekstu
+    // Obliczanie pozycji tekstu - umieszczenie na dole wyświetlacza
     SIZE valueSize;
     GetTextExtentPoint32W(memDC, valueText.c_str(), valueText.length(), &valueSize);
     int valueX = (clientRect.right - valueSize.cx) / 2;
-    int valueY = (clientRect.bottom - valueSize.cy) / 2 - valueSize.cy / 4; // Lekko przesunięte do góry
+    int valueY = clientRect.bottom - valueSize.cy - 15;  // Umieszczenie na dole z niewielkim marginesem
     
     // Rysowanie wartości
     TextOutW(memDC, valueX, valueY, valueText.c_str(), valueText.length());
@@ -422,7 +422,7 @@ void ValueDisplay::drawDisplay() {
     SIZE unitSize;
     GetTextExtentPoint32W(memDC, unitText.c_str(), unitText.length(), &unitSize);
     int unitX = valueX + valueSize.cx + 5; // 5 pikseli odstępu
-    int unitY = valueY + valueSize.cy - unitSize.cy; // Wyrównanie do dolnej linii wartości
+    int unitY = valueY + (valueSize.cy - unitSize.cy); // Wyrównanie do dolnej linii wartości
     
     TextOutW(memDC, unitX, unitY, unitText.c_str(), unitText.length());
     
