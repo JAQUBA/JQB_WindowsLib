@@ -29,6 +29,10 @@ if sys.platform == "win32":
     print("Dodawanie flagi subsystem,windows")
     env.Append(LINKFLAGS=["-Wl,-subsystem,windows"])
     
+    # Dodaj flagi statycznego linkowania
+    print("Dodawanie flag statycznego linkowania")
+    env.Append(LINKFLAGS=["-static-libgcc", "-static-libstdc++", "-static"])
+    
     # Dodaj wszystkie potrzebne biblioteki dla komponentów UI i funkcjonalności
     print("Dodawanie bibliotek do procesu linkowania")
     libraries = ["gdi32", "comctl32", "setupapi", "gdiplus", "shlwapi"]

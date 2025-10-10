@@ -112,7 +112,7 @@ void ValueDisplay::create(HWND parent) {
         CLIP_DEFAULT_PRECIS,             // Precyzja przycinania
         ANTIALIASED_QUALITY,             // Jakość
         DEFAULT_PITCH | FF_SWISS,        // Typ i rodzina czcionki
-        "Arial"                          // Nazwa czcionki
+        L"Arial"                         // Nazwa czcionki
     );
     
     m_unitFont = CreateFont(
@@ -125,7 +125,7 @@ void ValueDisplay::create(HWND parent) {
         CLIP_DEFAULT_PRECIS,
         ANTIALIASED_QUALITY,
         DEFAULT_PITCH | FF_SWISS,
-        "Arial"
+        L"Arial"
     );
     
     m_statusFont = CreateFont(
@@ -138,7 +138,7 @@ void ValueDisplay::create(HWND parent) {
         CLIP_DEFAULT_PRECIS,
         ANTIALIASED_QUALITY,
         DEFAULT_PITCH | FF_SWISS,
-        "Arial"
+        L"Arial"
     );
 }
 
