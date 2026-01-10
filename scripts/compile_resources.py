@@ -84,6 +84,16 @@ if sys.platform == "win32":
     
     # Dodaj wszystkie potrzebne biblioteki dla komponentów UI i funkcjonalności
     print("Dodawanie bibliotek do procesu linkowania")
-    libraries = ["gdi32", "comctl32", "setupapi", "gdiplus", "shlwapi"]
+    libraries = [
+        "gdi32",           # Grafika GDI
+        "comctl32",        # Kontrolki Windows
+        "setupapi",        # Setup API (enumeracja urządzeń)
+        "gdiplus",         # GDI+
+        "shlwapi",         # Shell Lightweight API
+        "bthprops",        # Bluetooth Properties API
+        "bluetoothapis",   # Bluetooth APIs
+        "ole32",           # OLE (wymagane przez BLE)
+        "uuid"             # UUID (wymagane przez GUID)
+    ]
     env.Append(LIBS=libraries)
     print(f"Dodano następujące biblioteki: {', '.join(libraries)}")

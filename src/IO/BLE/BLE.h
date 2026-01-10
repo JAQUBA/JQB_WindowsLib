@@ -1,0 +1,128 @@
+#ifndef BLE_H
+#define BLE_H
+
+#include "Core.h"
+#include <string>
+#include <vector>
+#include <functional>
+#include <thread>
+#include <atomic>
+#include <map>
+
+// Struktura reprezentująca urządzenie BLE
+struct BLEDevice {
+    std::wstring name;           // Nazwa urządzenia
+    std::wstring address;        // Adres MAC urządzenia
+    int rssi;                    // Siła sygnału (RSSI)
+    bool isConnectable;          // Czy urządzenie można połączyć
+    
+    // Konwersja do string dla Select
+    std::string toString() const;
+};
+
+// Klasa do obsługi komunikacji przez Bluetooth Low Energy
+class BLE {
+public:
+    // Stan połączenia BLE
+    enum class ConnectionState {
+        DISCONNECTED,
+        SCANNING,
+        CONNECTING,
+        CONNECTED,
+        CONNECTION_ERROR  // Zmieniono z ERROR - konflikt z makrem Windows
+    };
+
+    BLE();
+    ~BLE();
+
+    // Inicjalizacja adaptera BLE
+    bool init();
+    
+    // Sprawdzenie czy BLE jest dostępne w systemie
+    bool isAvailable() const { return m_bleAvailable; }
+    
+    // Skanowanie urządzeń BLE
+    bool startScan(int durationSeconds = 10);
+    void stopScan();
+    bool isScanning() const { return m_scanning; }
+    
+    // Połączenie z urządzeniem
+    bool connect(const std::wstring& deviceAddress);
+    void disconnect();
+    bool isConnected() const { return m_connectionState == ConnectionState::CONNECTED; }
+    
+    // Ustawienie urządzenia do połączenia (po nazwie lub adresie)
+    void setDevice(const std::wstring& deviceNameOrAddress);
+    
+    // Pobieranie listy znalezionych urządzeń
+    const std::vector<BLEDevice>& getDiscoveredDevices() const { return m_discoveredDevices; }
+    
+    // Lista urządzeń jako stringi (dla kompatybilności z Select)
+    const std::vector<std::string>& getAvailableDevices() const { return m_availableDeviceStrings; }
+    
+    // Pobieranie aktualnego stanu
+    ConnectionState getConnectionState() const { return m_connectionState; }
+    std::wstring getConnectionStateString() const;
+    
+    // Wysyłanie danych do urządzenia
+    bool send(const std::vector<uint8_t>& data);
+    bool write(const std::vector<uint8_t>& data);
+    
+    // Callbacki dla zdarzeń
+    void onConnect(std::function<void()> callback);
+    void onDisconnect(std::function<void()> callback);
+    void onReceive(std::function<void(const std::vector<uint8_t>&)> callback);
+    void onDeviceDiscovered(std::function<void(const BLEDevice&)> callback);
+    void onScanComplete(std::function<void()> callback);
+    void onError(std::function<void(const std::wstring&)> callback);
+    
+    // UUID serwisów i charakterystyk dla OWON OW18B
+    static const std::wstring OWON_SERVICE_UUID;
+    static const std::wstring OWON_NOTIFY_CHARACTERISTIC_UUID;
+    static const std::wstring OWON_WRITE_CHARACTERISTIC_UUID;
+
+private:
+    // Wewnętrzne metody
+    void scanThreadFunction();
+    void connectionThreadFunction();
+    void notificationThreadFunction();
+    void updateAvailableDeviceStrings();
+    bool setupNotifications();
+    
+    // Stan adaptera i połączenia
+    bool m_bleAvailable;
+    std::atomic<bool> m_scanning;
+    std::atomic<ConnectionState> m_connectionState;
+    std::wstring m_selectedDeviceAddress;
+    
+    // Wątki
+    std::thread m_scanThread;
+    std::thread m_connectionThread;
+    std::thread m_notificationThread;
+    std::atomic<bool> m_stopScanThread;
+    std::atomic<bool> m_stopConnectionThread;
+    std::atomic<bool> m_stopNotificationThread;
+    
+    // Lista odkrytych urządzeń
+    std::vector<BLEDevice> m_discoveredDevices;
+    std::vector<std::string> m_availableDeviceStrings;
+    
+    // Callbacki
+    std::function<void()> m_onConnectCallback;
+    std::function<void()> m_onDisconnectCallback;
+    std::function<void(const std::vector<uint8_t>&)> m_onReceiveCallback;
+    std::function<void(const BLEDevice&)> m_onDeviceDiscoveredCallback;
+    std::function<void()> m_onScanCompleteCallback;
+    std::function<void(const std::wstring&)> m_onErrorCallback;
+    
+    // Handlery Windows BLE
+    HANDLE m_deviceHandle;
+    HANDLE m_serviceHandle;
+    HANDLE m_notifyCharacteristicHandle;
+    HANDLE m_writeCharacteristicHandle;
+    
+    // Bufor do odbierania danych
+    std::vector<uint8_t> m_receiveBuffer;
+};
+
+#endif // BLE_H

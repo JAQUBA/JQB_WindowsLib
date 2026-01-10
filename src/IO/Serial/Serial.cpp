@@ -183,14 +183,36 @@ void Serial::updateComPorts() {
 }
 
 bool Serial::write(const std::vector<uint8_t>& data) {
-    if (m_serialHandle == INVALID_HANDLE_VALUE || !m_connected) {
+    // Sprawdź HANDLE
+    if (m_serialHandle == INVALID_HANDLE_VALUE) {
+        return false;
+    }
+    if (!m_connected) {
+        return false;
+    }
+    
+    // Sprawdź czy HANDLE jest poprawny
+    DWORD handInfo;
+    if (!GetHandleInformation(m_serialHandle, &handInfo)) {
+        DWORD err = GetLastError();
+        char buf[128];
+        snprintf(buf, sizeof(buf), "Serial::write - GetHandleInformation failed, error=%lu\n", err);
+        OutputDebugStringA(buf);
         return false;
     }
 
     DWORD bytesWritten = 0;
-    BOOL result = WriteFile(m_serialHandle, data.data(), data.size(), &bytesWritten, NULL);
+    BOOL result = WriteFile(m_serialHandle, data.data(), (DWORD)data.size(), &bytesWritten, NULL);
     
-    return (result && bytesWritten == data.size());
+    if (!result) {
+        DWORD error = GetLastError();
+        char buf[128];
+        snprintf(buf, sizeof(buf), "Serial::write - WriteFile failed, error=%lu, handle=%p\n", error, (void*)m_serialHandle);
+        OutputDebugStringA(buf);
+        return false;
+    }
+    
+    return (bytesWritten == data.size());
 }
 
 bool Serial::read(std::vector<uint8_t>& data, size_t bytesToRead) {
