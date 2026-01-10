@@ -2,6 +2,7 @@ Import("env")
 import os
 import subprocess
 import sys
+import platform as platform_module
 
 # Lokalizacja pliku resources.rc
 rc_file = os.path.join(env.subst("$PROJECT_DIR"), "resources.rc")
@@ -15,9 +16,57 @@ if not os.path.exists(build_dir):
 
 res_file = os.path.join(build_dir, "resources.res")
 
+# Znajdź ścieżkę do MinGW - sprawdza wiele możliwych lokalizacji
+def find_mingw_bin():
+    """Znajdź ścieżkę do katalogu bin MinGW"""
+    project_dir = env.subst("$PROJECT_DIR")
+    
+    # Wykryj architekturę
+    is_64bit = platform_module.machine().endswith('64')
+    
+    # Możliwe lokalizacje folderu packages
+    possible_packages = [
+        os.path.join(project_dir, "platform", "packages"),
+        os.path.join(project_dir, "..", "platform", "packages"),
+    ]
+    
+    # Nazwy folderów MinGW
+    mingw_names = ["mingw64", "toolchain-mingw64"] if is_64bit else ["mingw32", "toolchain-mingw32"]
+    
+    for packages_dir in possible_packages:
+        if not os.path.exists(packages_dir):
+            continue
+            
+        # Sprawdź standardowe nazwy
+        for mingw_name in mingw_names:
+            bin_path = os.path.join(packages_dir, mingw_name, "bin")
+            windres_path = os.path.join(bin_path, "windres.exe")
+            if os.path.exists(windres_path):
+                return bin_path
+        
+        # Fallback - szukaj dowolnego folderu z mingw w nazwie
+        for item in os.listdir(packages_dir):
+            item_path = os.path.join(packages_dir, item)
+            if os.path.isdir(item_path) and "mingw" in item.lower():
+                bin_path = os.path.join(item_path, "bin")
+                windres_path = os.path.join(bin_path, "windres.exe")
+                if os.path.exists(windres_path):
+                    return bin_path
+    
+    return None
+
 # Komenda do kompilacji pliku RC
 if sys.platform == "win32":
-    windres_cmd = ["windres", rc_file, "-O", "coff", "-o", res_file]
+    # Znajdź pełną ścieżkę do windres
+    mingw_bin = find_mingw_bin()
+    if mingw_bin:
+        windres_path = os.path.join(mingw_bin, "windres.exe")
+        # Dodaj MinGW bin do PATH dla innych narzędzi
+        env.PrependENVPath("PATH", mingw_bin)
+    else:
+        windres_path = "windres"  # Fallback do PATH
+    
+    windres_cmd = [windres_path, rc_file, "-O", "coff", "-o", res_file]
     
     print("Kompilowanie plików zasobów: " + " ".join(windres_cmd))
     subprocess.call(windres_cmd)
