@@ -2,13 +2,10 @@
 #include "Serial.h"
 #include "../../Util/StringUtils.h"
 #include <setupapi.h>       // struct definitions only (loaded dynamically)
-#include <devguid.h>
 
-/* Fallback: define GUID_DEVCLASS_PORTS if devguid.h didn't provide it */
-#ifndef DEFINE_DEVPROPKEY
-DEFINE_GUID(GUID_DEVCLASS_PORTS_FALLBACK,
+/* Define GUID_DEVCLASS_PORTS — devguid.h on MinGW.org only declares it */
+DEFINE_GUID(GUID_DEVCLASS_PORTS,
     0x4D36E978, 0xE325, 0x11CE, 0xBF, 0xC1, 0x08, 0x00, 0x2B, 0xE1, 0x03, 0x18);
-#endif
 
 Serial::Serial() : m_serialHandle(INVALID_HANDLE_VALUE), m_connected(false), 
                    m_onConnectCallback(nullptr), m_onDisconnectCallback(nullptr),
