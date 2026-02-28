@@ -3,7 +3,6 @@
 #include <sstream>
 #include <algorithm>
 #include <Windows.h>
-#include <ShlObj.h>
 
 ConfigManager::ConfigManager(const std::string& configFilePath)
     : m_configFilePath(configFilePath) {

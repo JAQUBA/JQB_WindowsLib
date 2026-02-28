@@ -83,17 +83,12 @@ if sys.platform == "win32":
     env.Append(LINKFLAGS=["-static-libgcc", "-static-libstdc++", "-static"])
     
     # Dodaj wszystkie potrzebne biblioteki dla komponentów UI i funkcjonalności
+    # Biblioteki IO (setupapi, bthprops, hid, gdiplus, shlwapi) są ładowane
+    # dynamicznie przez LoadLibrary/GetProcAddress w odpowiednich modułach.
     print("Dodawanie bibliotek do procesu linkowania")
     libraries = [
-        "gdi32",           # Grafika GDI
-        "comctl32",        # Kontrolki Windows
-        "setupapi",        # Setup API (enumeracja urządzeń)
-        "gdiplus",         # GDI+
-        "shlwapi",         # Shell Lightweight API
-        "bthprops",        # Bluetooth Properties API
-        "bluetoothapis",   # Bluetooth APIs
-        "ole32",           # OLE (wymagane przez BLE)
-        "uuid"             # UUID (wymagane przez GUID)
+        "gdi32",           # Grafika GDI (używane globalnie w UI)
+        "comctl32",        # Kontrolki Windows (rejestracja klas)
     ]
     env.Append(LIBS=libraries)
     print(f"Dodano następujące biblioteki: {', '.join(libraries)}")

@@ -5,7 +5,7 @@
  */
 
 #include "HID.h"
-#include <setupapi.h>
+#include <setupapi.h>       // struct definitions only (loaded dynamically)
 #include <cstring>
 
 /* ------------------------------------------------------------------ */
@@ -39,7 +39,12 @@ HID::HID()
       pSetFeature(NULL),
       pGetPreparsedData(NULL),
       pFreePreparsedData(NULL),
-      pGetCaps(NULL)
+      pGetCaps(NULL),
+      m_setupapiDll(NULL),
+      pSetupDiGetClassDevsA(NULL),
+      pSetupDiEnumDeviceInterfaces(NULL),
+      pSetupDiGetDeviceInterfaceDetailA(NULL),
+      pSetupDiDestroyDeviceInfoList(NULL)
 {
 }
 
@@ -48,6 +53,10 @@ HID::~HID() {
     if (m_hidDll) {
         FreeLibrary(m_hidDll);
         m_hidDll = NULL;
+    }
+    if (m_setupapiDll) {
+        FreeLibrary(m_setupapiDll);
+        m_setupapiDll = NULL;
     }
 }
 
@@ -77,6 +86,34 @@ bool HID::init() {
         FreeLibrary(m_hidDll);
         m_hidDll = NULL;
         if (m_onErrorCallback) m_onErrorCallback("Failed to resolve hid.dll functions");
+        return false;
+    }
+
+    /* Load setupapi.dll dynamically */
+    m_setupapiDll = LoadLibraryA("setupapi.dll");
+    if (!m_setupapiDll) {
+        FreeLibrary(m_hidDll);
+        m_hidDll = NULL;
+        if (m_onErrorCallback) m_onErrorCallback("Failed to load setupapi.dll");
+        return false;
+    }
+
+    pSetupDiGetClassDevsA = (fn_SetupDiGetClassDevsA)
+        GetProcAddress(m_setupapiDll, "SetupDiGetClassDevsA");
+    pSetupDiEnumDeviceInterfaces = (fn_SetupDiEnumDeviceInterfaces)
+        GetProcAddress(m_setupapiDll, "SetupDiEnumDeviceInterfaces");
+    pSetupDiGetDeviceInterfaceDetailA = (fn_SetupDiGetDeviceInterfaceDetailA)
+        GetProcAddress(m_setupapiDll, "SetupDiGetDeviceInterfaceDetailA");
+    pSetupDiDestroyDeviceInfoList = (fn_SetupDiDestroyDeviceInfoList)
+        GetProcAddress(m_setupapiDll, "SetupDiDestroyDeviceInfoList");
+
+    if (!pSetupDiGetClassDevsA || !pSetupDiEnumDeviceInterfaces ||
+        !pSetupDiGetDeviceInterfaceDetailA || !pSetupDiDestroyDeviceInfoList) {
+        FreeLibrary(m_setupapiDll);
+        m_setupapiDll = NULL;
+        FreeLibrary(m_hidDll);
+        m_hidDll = NULL;
+        if (m_onErrorCallback) m_onErrorCallback("Failed to resolve setupapi.dll functions");
         return false;
     }
 
@@ -166,7 +203,7 @@ bool HID::findAndOpen() {
     GUID hidGuid;
     pGetHidGuid(&hidGuid);
 
-    HDEVINFO devInfo = SetupDiGetClassDevsA(
+    HDEVINFO devInfo = pSetupDiGetClassDevsA(
         &hidGuid, NULL, NULL,
         DIGCF_PRESENT | DIGCF_DEVICEINTERFACE);
 
@@ -179,11 +216,11 @@ bool HID::findAndOpen() {
     ifaceData.cbSize = sizeof(SP_DEVICE_INTERFACE_DATA);
 
     for (DWORD idx = 0;
-         SetupDiEnumDeviceInterfaces(devInfo, NULL, &hidGuid, idx, &ifaceData);
+         pSetupDiEnumDeviceInterfaces(devInfo, NULL, &hidGuid, idx, &ifaceData);
          idx++)
     {
         DWORD requiredSize = 0;
-        SetupDiGetDeviceInterfaceDetailA(
+        pSetupDiGetDeviceInterfaceDetailA(
             devInfo, &ifaceData, NULL, 0, &requiredSize, NULL);
 
         if (requiredSize == 0) continue;
@@ -193,7 +230,7 @@ bool HID::findAndOpen() {
         if (!detail) continue;
         detail->cbSize = sizeof(SP_DEVICE_INTERFACE_DETAIL_DATA_A);
 
-        if (!SetupDiGetDeviceInterfaceDetailA(
+        if (!pSetupDiGetDeviceInterfaceDetailA(
                 devInfo, &ifaceData, detail, requiredSize, NULL, NULL)) {
             free(detail);
             continue;
@@ -216,7 +253,7 @@ bool HID::findAndOpen() {
         if (matchDevice(h)) {
             m_handle = h;
             m_open   = true;
-            SetupDiDestroyDeviceInfoList(devInfo);
+            pSetupDiDestroyDeviceInfoList(devInfo);
             if (m_onConnectCallback) m_onConnectCallback();
             return true;
         }
@@ -224,7 +261,7 @@ bool HID::findAndOpen() {
         CloseHandle(h);
     }
 
-    SetupDiDestroyDeviceInfoList(devInfo);
+    pSetupDiDestroyDeviceInfoList(devInfo);
     return false;
 }
 
@@ -240,7 +277,7 @@ std::vector<HIDDevice> HID::scan() {
     GUID hidGuid;
     pGetHidGuid(&hidGuid);
 
-    HDEVINFO devInfo = SetupDiGetClassDevsA(
+    HDEVINFO devInfo = pSetupDiGetClassDevsA(
         &hidGuid, NULL, NULL,
         DIGCF_PRESENT | DIGCF_DEVICEINTERFACE);
 
@@ -250,11 +287,11 @@ std::vector<HIDDevice> HID::scan() {
     ifaceData.cbSize = sizeof(SP_DEVICE_INTERFACE_DATA);
 
     for (DWORD idx = 0;
-         SetupDiEnumDeviceInterfaces(devInfo, NULL, &hidGuid, idx, &ifaceData);
+         pSetupDiEnumDeviceInterfaces(devInfo, NULL, &hidGuid, idx, &ifaceData);
          idx++)
     {
         DWORD requiredSize = 0;
-        SetupDiGetDeviceInterfaceDetailA(
+        pSetupDiGetDeviceInterfaceDetailA(
             devInfo, &ifaceData, NULL, 0, &requiredSize, NULL);
 
         if (requiredSize == 0) continue;
@@ -264,7 +301,7 @@ std::vector<HIDDevice> HID::scan() {
         if (!detail) continue;
         detail->cbSize = sizeof(SP_DEVICE_INTERFACE_DETAIL_DATA_A);
 
-        if (!SetupDiGetDeviceInterfaceDetailA(
+        if (!pSetupDiGetDeviceInterfaceDetailA(
                 devInfo, &ifaceData, detail, requiredSize, NULL, NULL)) {
             free(detail);
             continue;
@@ -325,7 +362,7 @@ std::vector<HIDDevice> HID::scan() {
         result.push_back(dev);
     }
 
-    SetupDiDestroyDeviceInfoList(devInfo);
+    pSetupDiDestroyDeviceInfoList(devInfo);
     return result;
 }
 

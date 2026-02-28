@@ -24,7 +24,17 @@ Umożliwienie szybkiego tworzenia narzędzi desktopowych (konfiguratory, monitor
 
 ### Linkowane biblioteki
 
-`gdi32`, `comctl32`, `setupapi`, `gdiplus`, `shlwapi`, `bthprops`, `bluetoothapis`, `ole32`, `uuid`
+**Statycznie** (zawsze): `gdi32`, `comctl32`
+
+**Dynamicznie** (LoadLibrary/GetProcAddress w `init()`):
+
+| DLL | Moduł | Funkcje |
+|-----|-------|---------|
+| `hid.dll` | IO/HID | HidD_GetHidGuid, HidD_GetAttributes, HidD_Get/SetFeature, HidP_GetCaps |
+| `setupapi.dll` | IO/HID, IO/Serial, IO/BLE | SetupDiGetClassDevs, SetupDiEnumDevice*, SetupDiGetDeviceInterfaceDetail, SetupDiGetDeviceRegistryProperty, SetupDiDestroyDeviceInfoList |
+| `bthprops.cpl` | IO/BLE | BluetoothFindFirstRadio, BluetoothFindRadioClose, BluetoothGetRadioInfo |
+| `gdiplus.dll` | UI/ImageView | GdiplusStartup/Shutdown, GdipCreateBitmapFrom*, GdipGetImage*, GdipCreateHBITMAPFromBitmap |
+| `shlwapi.dll` | UI/ImageView | SHCreateMemStream |
 
 ---
 
@@ -274,14 +284,15 @@ baudrate=9600
 5. **Podaj `#include <Core.h>`** zawsze jako pierwszy include
 6. **Callbacki:** Używaj lambd `[capture](Typ* ptr) { ... }`
 7. **Nowe okno:** `new SimpleWindow(w, h, "title", 0); window->init();` — ZAWSZE `init()`!
-8. **Serial/BLE:** Zawsze `init()` przed `connect()` / `startScan()`
+8. **Serial/BLE/HID:** Zawsze `init()` przed `connect()` / `startScan()` / `findAndOpen()` — init() ładuje DLL dynamicznie
 9. **Konwersja stringów:** `StringUtils::utf8ToWide()` / `wideToUtf8()`
-10. **Statyczny link:** Wynikowy `.exe` nie wymaga dodatkowych DLL
+10. **Statyczny link:** Wynikowy `.exe` nie wymaga dodatkowych DLL (zależności systemowe ładowane dynamicznie)
 11. **Zasoby (ikona):** Plik `resources.rc` w katalogu głównym projektu, kompilowany automatycznie
 12. **TextArea jest readonly** — do pól edycyjnych użyj `InputField`
 13. **Chart** automatycznie usuwa stare dane i limituje FPS
 14. **ValueDisplay** obsługuje double-buffering i nie miga
 15. **TabControl::getTabPage()** zwraca HWND panelu — na nim umieszczaj kontrolki
+16. **Dynamiczne ładowanie DLL:** Moduły IO (Serial, BLE, HID) i ImageView ładują swoje DLL przez `LoadLibrary`/`GetProcAddress` w `init()`. Jedyne statycznie linkowane biblioteki to `gdi32` i `comctl32`.
 
 ### Typowy layout aplikacji
 

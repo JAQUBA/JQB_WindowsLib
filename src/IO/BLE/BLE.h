@@ -9,6 +9,20 @@
 #include <atomic>
 #include <map>
 
+/* Manually defined Bluetooth structs (avoids dependency on bluetoothapis.h link) */
+typedef struct _BLUETOOTH_FIND_RADIO_PARAMS_BLE {
+    DWORD dwSize;
+} BLUETOOTH_FIND_RADIO_PARAMS_BLE;
+
+typedef struct _BLUETOOTH_RADIO_INFO_BLE {
+    DWORD dwSize;
+    BYTE  address[8];       // BLUETOOTH_ADDRESS (8 bytes)
+    WCHAR szName[248];
+    ULONG ulClassofDevice;
+    USHORT lmpSubversion;
+    USHORT manufacturer;
+} BLUETOOTH_RADIO_INFO_BLE;
+
 // Struktura reprezentująca urządzenie BLE
 struct BLEDevice {
     std::wstring name;           // Nazwa urządzenia
@@ -123,6 +137,33 @@ private:
     
     // Bufor do odbierania danych
     std::vector<uint8_t> m_receiveBuffer;
+
+    // --- Dynamic library loading (bthprops.cpl) ---
+    HMODULE m_bthpropsDll;
+
+    typedef HANDLE (WINAPI *fn_BluetoothFindFirstRadio)(
+        const BLUETOOTH_FIND_RADIO_PARAMS_BLE*, HANDLE*);
+    typedef BOOL   (WINAPI *fn_BluetoothFindRadioClose)(HANDLE);
+    typedef DWORD  (WINAPI *fn_BluetoothGetRadioInfo)(HANDLE, BLUETOOTH_RADIO_INFO_BLE*);
+
+    fn_BluetoothFindFirstRadio  pBluetoothFindFirstRadio;
+    fn_BluetoothFindRadioClose  pBluetoothFindRadioClose;
+    fn_BluetoothGetRadioInfo    pBluetoothGetRadioInfo;
+
+    // --- Dynamic library loading (setupapi.dll) ---
+    HMODULE m_setupapiDll;
+
+    typedef HDEVINFO (WINAPI *fn_SetupDiGetClassDevsW)(const GUID*, PCWSTR, HWND, DWORD);
+    typedef BOOL     (WINAPI *fn_SetupDiEnumDeviceInterfaces)(HDEVINFO, void*, const GUID*, DWORD, void*);
+    typedef BOOL     (WINAPI *fn_SetupDiGetDeviceInterfaceDetailW)(HDEVINFO, void*, void*, DWORD, DWORD*, void*);
+    typedef BOOL     (WINAPI *fn_SetupDiGetDeviceRegistryPropertyW)(HDEVINFO, void*, DWORD, DWORD*, BYTE*, DWORD, DWORD*);
+    typedef BOOL     (WINAPI *fn_SetupDiDestroyDeviceInfoList)(HDEVINFO);
+
+    fn_SetupDiGetClassDevsW               pSetupDiGetClassDevsW;
+    fn_SetupDiEnumDeviceInterfaces        pSetupDiEnumDeviceInterfaces;
+    fn_SetupDiGetDeviceInterfaceDetailW   pSetupDiGetDeviceInterfaceDetailW;
+    fn_SetupDiGetDeviceRegistryPropertyW  pSetupDiGetDeviceRegistryPropertyW;
+    fn_SetupDiDestroyDeviceInfoList       pSetupDiDestroyDeviceInfoList;
 };
 
 #endif // BLE_H

@@ -46,6 +46,21 @@ private:
     std::thread m_readThread;
     std::atomic<bool> m_stopReadThread;
     void readThreadFunction();
+
+    // --- Dynamic library loading (setupapi.dll) ---
+    HMODULE m_setupapiDll;
+
+    typedef HDEVINFO (WINAPI *fn_SetupDiGetClassDevsA)(const GUID*, PCSTR, HWND, DWORD);
+    typedef BOOL     (WINAPI *fn_SetupDiEnumDeviceInfo)(HDEVINFO, DWORD, void*);
+    typedef BOOL     (WINAPI *fn_SetupDiGetDeviceRegistryPropertyA)(HDEVINFO, void*, DWORD, DWORD*, BYTE*, DWORD, DWORD*);
+    typedef BOOL     (WINAPI *fn_SetupDiDestroyDeviceInfoList)(HDEVINFO);
+
+    fn_SetupDiGetClassDevsA               pSetupDiGetClassDevsA;
+    fn_SetupDiEnumDeviceInfo              pSetupDiEnumDeviceInfo;
+    fn_SetupDiGetDeviceRegistryPropertyA  pSetupDiGetDeviceRegistryPropertyA;
+    fn_SetupDiDestroyDeviceInfoList       pSetupDiDestroyDeviceInfoList;
+
+    bool loadSetupApi();
 };
 
 #endif // SERIAL_H

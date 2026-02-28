@@ -14,10 +14,9 @@
 #include <sstream>
 #include <iomanip>
 
-// Biblioteki Windows
+// Biblioteki Windows — headers only, DLLs loaded dynamically
 #include <initguid.h>
-#include <setupapi.h>
-#include <bluetoothapis.h>
+#include <setupapi.h>       // struct definitions (SP_DEVICE_INTERFACE_DATA etc.)
 #include <bthdef.h>
 
 // GUID dla urządzeń BLE
@@ -61,6 +60,16 @@ BLE::BLE()
     , m_serviceHandle(INVALID_HANDLE_VALUE)
     , m_notifyCharacteristicHandle(INVALID_HANDLE_VALUE)
     , m_writeCharacteristicHandle(INVALID_HANDLE_VALUE)
+    , m_bthpropsDll(NULL)
+    , pBluetoothFindFirstRadio(NULL)
+    , pBluetoothFindRadioClose(NULL)
+    , pBluetoothGetRadioInfo(NULL)
+    , m_setupapiDll(NULL)
+    , pSetupDiGetClassDevsW(NULL)
+    , pSetupDiEnumDeviceInterfaces(NULL)
+    , pSetupDiGetDeviceInterfaceDetailW(NULL)
+    , pSetupDiGetDeviceRegistryPropertyW(NULL)
+    , pSetupDiDestroyDeviceInfoList(NULL)
 {
 }
 
@@ -82,25 +91,87 @@ BLE::~BLE() {
         m_stopNotificationThread = true;
         m_notificationThread.join();
     }
+
+    if (m_bthpropsDll) {
+        FreeLibrary(m_bthpropsDll);
+        m_bthpropsDll = NULL;
+    }
+    if (m_setupapiDll) {
+        FreeLibrary(m_setupapiDll);
+        m_setupapiDll = NULL;
+    }
 }
 
 bool BLE::init() {
+    // --- Load bthprops.cpl dynamically ---
+    m_bthpropsDll = LoadLibraryA("bthprops.cpl");
+    if (!m_bthpropsDll) {
+        // Bluetooth stack not installed — not an error, just unavailable
+        m_bleAvailable = false;
+        return false;
+    }
+
+    pBluetoothFindFirstRadio = (fn_BluetoothFindFirstRadio)
+        GetProcAddress(m_bthpropsDll, "BluetoothFindFirstRadio");
+    pBluetoothFindRadioClose = (fn_BluetoothFindRadioClose)
+        GetProcAddress(m_bthpropsDll, "BluetoothFindRadioClose");
+    pBluetoothGetRadioInfo = (fn_BluetoothGetRadioInfo)
+        GetProcAddress(m_bthpropsDll, "BluetoothGetRadioInfo");
+
+    if (!pBluetoothFindFirstRadio || !pBluetoothFindRadioClose || !pBluetoothGetRadioInfo) {
+        FreeLibrary(m_bthpropsDll);
+        m_bthpropsDll = NULL;
+        m_bleAvailable = false;
+        return false;
+    }
+
+    // --- Load setupapi.dll dynamically ---
+    m_setupapiDll = LoadLibraryA("setupapi.dll");
+    if (!m_setupapiDll) {
+        FreeLibrary(m_bthpropsDll);
+        m_bthpropsDll = NULL;
+        m_bleAvailable = false;
+        return false;
+    }
+
+    pSetupDiGetClassDevsW = (fn_SetupDiGetClassDevsW)
+        GetProcAddress(m_setupapiDll, "SetupDiGetClassDevsW");
+    pSetupDiEnumDeviceInterfaces = (fn_SetupDiEnumDeviceInterfaces)
+        GetProcAddress(m_setupapiDll, "SetupDiEnumDeviceInterfaces");
+    pSetupDiGetDeviceInterfaceDetailW = (fn_SetupDiGetDeviceInterfaceDetailW)
+        GetProcAddress(m_setupapiDll, "SetupDiGetDeviceInterfaceDetailW");
+    pSetupDiGetDeviceRegistryPropertyW = (fn_SetupDiGetDeviceRegistryPropertyW)
+        GetProcAddress(m_setupapiDll, "SetupDiGetDeviceRegistryPropertyW");
+    pSetupDiDestroyDeviceInfoList = (fn_SetupDiDestroyDeviceInfoList)
+        GetProcAddress(m_setupapiDll, "SetupDiDestroyDeviceInfoList");
+
+    if (!pSetupDiGetClassDevsW || !pSetupDiEnumDeviceInterfaces ||
+        !pSetupDiGetDeviceInterfaceDetailW || !pSetupDiGetDeviceRegistryPropertyW ||
+        !pSetupDiDestroyDeviceInfoList) {
+        FreeLibrary(m_setupapiDll);
+        m_setupapiDll = NULL;
+        FreeLibrary(m_bthpropsDll);
+        m_bthpropsDll = NULL;
+        m_bleAvailable = false;
+        return false;
+    }
+
     // Sprawdzenie czy adapter Bluetooth jest dostępny
-    BLUETOOTH_FIND_RADIO_PARAMS btfrp = { sizeof(BLUETOOTH_FIND_RADIO_PARAMS) };
+    BLUETOOTH_FIND_RADIO_PARAMS_BLE btfrp = { sizeof(BLUETOOTH_FIND_RADIO_PARAMS_BLE) };
     HANDLE hRadio = NULL;
-    HBLUETOOTH_RADIO_FIND hFind = BluetoothFindFirstRadio(&btfrp, &hRadio);
+    HANDLE hFind = pBluetoothFindFirstRadio(&btfrp, &hRadio);
     
     if (hFind) {
         // Pobierz informacje o adapterze
-        BLUETOOTH_RADIO_INFO radioInfo = { sizeof(BLUETOOTH_RADIO_INFO) };
-        if (BluetoothGetRadioInfo(hRadio, &radioInfo) == ERROR_SUCCESS) {
+        BLUETOOTH_RADIO_INFO_BLE radioInfo = { sizeof(BLUETOOTH_RADIO_INFO_BLE) };
+        if (pBluetoothGetRadioInfo(hRadio, &radioInfo) == ERROR_SUCCESS) {
             // Adapter znaleziony
             m_bleAvailable = true;
         } else {
             m_bleAvailable = true; // Zakładamy że jest, nawet jeśli nie możemy odczytać info
         }
         CloseHandle(hRadio);
-        BluetoothFindRadioClose(hFind);
+        pBluetoothFindRadioClose(hFind);
         return m_bleAvailable;
     }
     
@@ -170,7 +241,7 @@ void BLE::scanThreadFunction() {
     // Skanowanie urządzeń BLE przez Windows SetupAPI
     GUID bleGuid = GUID_BTLE_DEVICE_INTERFACE;
     
-    HDEVINFO deviceInfoSet = SetupDiGetClassDevsW(
+    HDEVINFO deviceInfoSet = pSetupDiGetClassDevsW(
         &bleGuid,
         NULL,
         NULL,
@@ -189,12 +260,12 @@ void BLE::scanThreadFunction() {
     
     DWORD deviceIndex = 0;
     
-    while (SetupDiEnumDeviceInterfaces(deviceInfoSet, NULL, &bleGuid, deviceIndex, &deviceInterfaceData)) {
+    while (pSetupDiEnumDeviceInterfaces(deviceInfoSet, NULL, &bleGuid, deviceIndex, &deviceInterfaceData)) {
         if (m_stopScanThread) break;
         
         // Pobierz rozmiar potrzebny dla szczegółów interfejsu
         DWORD requiredSize = 0;
-        SetupDiGetDeviceInterfaceDetailW(deviceInfoSet, &deviceInterfaceData, NULL, 0, &requiredSize, NULL);
+        pSetupDiGetDeviceInterfaceDetailW(deviceInfoSet, &deviceInterfaceData, NULL, 0, &requiredSize, NULL);
         
         if (requiredSize > 0) {
             PSP_DEVICE_INTERFACE_DETAIL_DATA_W detailData = 
@@ -206,15 +277,15 @@ void BLE::scanThreadFunction() {
                 SP_DEVINFO_DATA devInfoData;
                 devInfoData.cbSize = sizeof(SP_DEVINFO_DATA);
                 
-                if (SetupDiGetDeviceInterfaceDetailW(deviceInfoSet, &deviceInterfaceData, 
+                if (pSetupDiGetDeviceInterfaceDetailW(deviceInfoSet, &deviceInterfaceData, 
                     detailData, requiredSize, NULL, &devInfoData)) {
                     
                     // Pobierz nazwę urządzenia
                     wchar_t friendlyName[256] = {0};
-                    if (!SetupDiGetDeviceRegistryPropertyW(deviceInfoSet, &devInfoData,
+                    if (!pSetupDiGetDeviceRegistryPropertyW(deviceInfoSet, &devInfoData,
                         SPDRP_FRIENDLYNAME, NULL, (PBYTE)friendlyName, sizeof(friendlyName), NULL)) {
                         // Jeśli nie ma friendly name, spróbuj device description
-                        SetupDiGetDeviceRegistryPropertyW(deviceInfoSet, &devInfoData,
+                        pSetupDiGetDeviceRegistryPropertyW(deviceInfoSet, &devInfoData,
                             SPDRP_DEVICEDESC, NULL, (PBYTE)friendlyName, sizeof(friendlyName), NULL);
                     }
                     
@@ -271,7 +342,7 @@ void BLE::scanThreadFunction() {
         deviceIndex++;
     }
     
-    SetupDiDestroyDeviceInfoList(deviceInfoSet);
+    pSetupDiDestroyDeviceInfoList(deviceInfoSet);
 }
 
 void BLE::updateAvailableDeviceStrings() {

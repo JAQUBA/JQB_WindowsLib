@@ -189,6 +189,19 @@ private:
     fn_HidD_FreePreparsedData   pFreePreparsedData;
     fn_HidP_GetCaps             pGetCaps;
 
+    /* setupapi.dll function pointers */
+    HMODULE m_setupapiDll;
+
+    typedef HDEVINFO (WINAPI *fn_SetupDiGetClassDevsA)(const GUID*, PCSTR, HWND, DWORD);
+    typedef BOOL     (WINAPI *fn_SetupDiEnumDeviceInterfaces)(HDEVINFO, void*, const GUID*, DWORD, void*);
+    typedef BOOL     (WINAPI *fn_SetupDiGetDeviceInterfaceDetailA)(HDEVINFO, void*, void*, DWORD, DWORD*, void*);
+    typedef BOOL     (WINAPI *fn_SetupDiDestroyDeviceInfoList)(HDEVINFO);
+
+    fn_SetupDiGetClassDevsA               pSetupDiGetClassDevsA;
+    fn_SetupDiEnumDeviceInterfaces        pSetupDiEnumDeviceInterfaces;
+    fn_SetupDiGetDeviceInterfaceDetailA   pSetupDiGetDeviceInterfaceDetailA;
+    fn_SetupDiDestroyDeviceInfoList       pSetupDiDestroyDeviceInfoList;
+
     /* Internal helpers */
     bool matchDevice(HANDLE h, std::string* outPath = nullptr);
 };

@@ -1,20 +1,55 @@
 #include "Serial.h"
 #include "../../Util/StringUtils.h"
-#include <setupapi.h>
+#include <setupapi.h>       // struct definitions only (loaded dynamically)
 #include <initguid.h>
 #include <devguid.h>
 
 Serial::Serial() : m_serialHandle(INVALID_HANDLE_VALUE), m_connected(false), 
                    m_onConnectCallback(nullptr), m_onDisconnectCallback(nullptr),
-                   m_onReceiveCallback(nullptr), m_stopReadThread(false) {
+                   m_onReceiveCallback(nullptr), m_stopReadThread(false),
+                   m_setupapiDll(NULL),
+                   pSetupDiGetClassDevsA(NULL), pSetupDiEnumDeviceInfo(NULL),
+                   pSetupDiGetDeviceRegistryPropertyA(NULL), pSetupDiDestroyDeviceInfoList(NULL) {
 }
 
 Serial::~Serial() {
     disconnect();
+    if (m_setupapiDll) {
+        FreeLibrary(m_setupapiDll);
+        m_setupapiDll = NULL;
+    }
 }
 
 bool Serial::init() {
+    if (!loadSetupApi()) {
+        return false;
+    }
     updateComPorts();
+    return true;
+}
+
+bool Serial::loadSetupApi() {
+    if (m_setupapiDll) return true;  // already loaded
+
+    m_setupapiDll = LoadLibraryA("setupapi.dll");
+    if (!m_setupapiDll) return false;
+
+    pSetupDiGetClassDevsA = (fn_SetupDiGetClassDevsA)
+        GetProcAddress(m_setupapiDll, "SetupDiGetClassDevsA");
+    pSetupDiEnumDeviceInfo = (fn_SetupDiEnumDeviceInfo)
+        GetProcAddress(m_setupapiDll, "SetupDiEnumDeviceInfo");
+    pSetupDiGetDeviceRegistryPropertyA = (fn_SetupDiGetDeviceRegistryPropertyA)
+        GetProcAddress(m_setupapiDll, "SetupDiGetDeviceRegistryPropertyA");
+    pSetupDiDestroyDeviceInfoList = (fn_SetupDiDestroyDeviceInfoList)
+        GetProcAddress(m_setupapiDll, "SetupDiDestroyDeviceInfoList");
+
+    if (!pSetupDiGetClassDevsA || !pSetupDiEnumDeviceInfo ||
+        !pSetupDiGetDeviceRegistryPropertyA || !pSetupDiDestroyDeviceInfoList) {
+        FreeLibrary(m_setupapiDll);
+        m_setupapiDll = NULL;
+        return false;
+    }
+
     return true;
 }
 
@@ -148,8 +183,10 @@ void Serial::setPort(const char* portName) {
 void Serial::updateComPorts() {
     m_availablePorts.clear();
 
+    if (!m_setupapiDll) return;
+
     // Użyj setupapi do znalezienia dostępnych portów COM
-    HDEVINFO hDevInfo = SetupDiGetClassDevsA(&GUID_DEVCLASS_PORTS, 0, 0, DIGCF_PRESENT);
+    HDEVINFO hDevInfo = pSetupDiGetClassDevsA(&GUID_DEVCLASS_PORTS, 0, 0, DIGCF_PRESENT);
     if (hDevInfo == INVALID_HANDLE_VALUE) {
         return;
     }
@@ -158,13 +195,13 @@ void Serial::updateComPorts() {
     devInfoData.cbSize = sizeof(SP_DEVINFO_DATA);
 
     // Iteracja po wszystkich dostępnych portach
-    for (DWORD i = 0; SetupDiEnumDeviceInfo(hDevInfo, i, &devInfoData); ++i) {
+    for (DWORD i = 0; pSetupDiEnumDeviceInfo(hDevInfo, i, &devInfoData); ++i) {
         char friendlyName[256] = { 0 };
         DWORD propertyType = 0;
         DWORD requiredSize = 0;
 
         // Pobierz przyjazną nazwę urządzenia
-        SetupDiGetDeviceRegistryPropertyA(
+        pSetupDiGetDeviceRegistryPropertyA(
             hDevInfo, &devInfoData, SPDRP_FRIENDLYNAME,
             &propertyType, (BYTE*)friendlyName, sizeof(friendlyName), &requiredSize);
 
@@ -179,7 +216,7 @@ void Serial::updateComPorts() {
         }
     }
 
-    SetupDiDestroyDeviceInfoList(hDevInfo);
+    pSetupDiDestroyDeviceInfoList(hDevInfo);
 }
 
 bool Serial::write(const std::vector<uint8_t>& data) {

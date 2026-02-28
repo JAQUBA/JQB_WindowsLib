@@ -1,13 +1,102 @@
 #include "ImageView.h"
 #include "../../Util/StringUtils.h"
 #include <windows.h>
-#include <gdiplus.h>
 #include <map>
-#include <Shlwapi.h>
 
-// Linkowanie bibliotek
-#pragma comment(lib, "gdiplus.lib")
-#pragma comment(lib, "Shlwapi.lib")
+/* --------------------------------------------------------------- */
+/*  GDI+ flat API — dynamically loaded, no gdiplus.lib needed      */
+/* --------------------------------------------------------------- */
+
+// Forward‑declare only the types we actually use
+typedef int      GpStatus;        // Gdiplus::Status
+typedef void     GpBitmap;        // opaque handle
+typedef UINT32   ARGB;
+
+struct GdiplusStartupInput {
+    UINT32      GdiplusVersion;
+    void*       DebugEventCallback;
+    BOOL        SuppressBackgroundThread;
+    BOOL        SuppressExternalCodecs;
+};
+
+// Function‑pointer typedefs
+typedef GpStatus (WINAPI *fn_GdiplusStartup)(ULONG_PTR*, const GdiplusStartupInput*, void*);
+typedef void     (WINAPI *fn_GdiplusShutdown)(ULONG_PTR);
+typedef GpStatus (WINAPI *fn_GdipCreateBitmapFromFile)(const WCHAR*, GpBitmap**);
+typedef GpStatus (WINAPI *fn_GdipCreateBitmapFromStream)(IStream*, GpBitmap**);
+typedef GpStatus (WINAPI *fn_GdipGetImageWidth)(GpBitmap*, UINT*);
+typedef GpStatus (WINAPI *fn_GdipGetImageHeight)(GpBitmap*, UINT*);
+typedef GpStatus (WINAPI *fn_GdipCreateHBITMAPFromBitmap)(GpBitmap*, HBITMAP*, ARGB);
+typedef GpStatus (WINAPI *fn_GdipDisposeImage)(GpBitmap*);
+
+// shlwapi — only SHCreateMemStream
+typedef IStream* (WINAPI *fn_SHCreateMemStream)(const BYTE*, UINT);
+
+// Module‑level DLL handles (released implicitly on process exit)
+static HMODULE s_gdiplusDll  = NULL;
+static HMODULE s_shlwapiDll  = NULL;
+
+// Function pointers
+static fn_GdiplusStartup                pGdiplusStartup             = NULL;
+static fn_GdiplusShutdown               pGdiplusShutdown            = NULL;
+static fn_GdipCreateBitmapFromFile      pGdipCreateBitmapFromFile   = NULL;
+static fn_GdipCreateBitmapFromStream    pGdipCreateBitmapFromStream = NULL;
+static fn_GdipGetImageWidth             pGdipGetImageWidth          = NULL;
+static fn_GdipGetImageHeight            pGdipGetImageHeight         = NULL;
+static fn_GdipCreateHBITMAPFromBitmap   pGdipCreateHBITMAPFromBitmap= NULL;
+static fn_GdipDisposeImage              pGdipDisposeImage           = NULL;
+static fn_SHCreateMemStream             pSHCreateMemStream          = NULL;
+
+static bool s_gdipLoaded  = false;
+static bool s_shlwapiLoaded = false;
+
+static bool ensureGdiplus() {
+    if (s_gdipLoaded) return true;
+    s_gdiplusDll = LoadLibraryA("gdiplus.dll");
+    if (!s_gdiplusDll) return false;
+
+    pGdiplusStartup              = (fn_GdiplusStartup)             GetProcAddress(s_gdiplusDll, "GdiplusStartup");
+    pGdiplusShutdown             = (fn_GdiplusShutdown)            GetProcAddress(s_gdiplusDll, "GdiplusShutdown");
+    pGdipCreateBitmapFromFile    = (fn_GdipCreateBitmapFromFile)   GetProcAddress(s_gdiplusDll, "GdipCreateBitmapFromFile");
+    pGdipCreateBitmapFromStream  = (fn_GdipCreateBitmapFromStream) GetProcAddress(s_gdiplusDll, "GdipCreateBitmapFromStream");
+    pGdipGetImageWidth           = (fn_GdipGetImageWidth)          GetProcAddress(s_gdiplusDll, "GdipGetImageWidth");
+    pGdipGetImageHeight          = (fn_GdipGetImageHeight)         GetProcAddress(s_gdiplusDll, "GdipGetImageHeight");
+    pGdipCreateHBITMAPFromBitmap = (fn_GdipCreateHBITMAPFromBitmap)GetProcAddress(s_gdiplusDll, "GdipCreateHBITMAPFromBitmap");
+    pGdipDisposeImage            = (fn_GdipDisposeImage)           GetProcAddress(s_gdiplusDll, "GdipDisposeImage");
+
+    if (!pGdiplusStartup || !pGdiplusShutdown || !pGdipCreateBitmapFromFile ||
+        !pGdipCreateBitmapFromStream || !pGdipGetImageWidth || !pGdipGetImageHeight ||
+        !pGdipCreateHBITMAPFromBitmap || !pGdipDisposeImage) {
+        FreeLibrary(s_gdiplusDll);
+        s_gdiplusDll = NULL;
+        return false;
+    }
+
+    s_gdipLoaded = true;
+    return true;
+}
+
+static bool ensureShlwapi() {
+    if (s_shlwapiLoaded) return true;
+    s_shlwapiDll = LoadLibraryA("shlwapi.dll");
+    if (!s_shlwapiDll) return false;
+
+    // SHCreateMemStream is ordinal 12 in older SDKs, but also exported by name
+    pSHCreateMemStream = (fn_SHCreateMemStream)GetProcAddress(s_shlwapiDll, "SHCreateMemStream");
+    if (!pSHCreateMemStream) {
+        // Fallback: try ordinal 12
+        pSHCreateMemStream = (fn_SHCreateMemStream)GetProcAddress(s_shlwapiDll, MAKEINTRESOURCEA(12));
+    }
+
+    if (!pSHCreateMemStream) {
+        FreeLibrary(s_shlwapiDll);
+        s_shlwapiDll = NULL;
+        return false;
+    }
+
+    s_shlwapiLoaded = true;
+    return true;
+}
 
 // Inicjalizacja zmiennej statycznej
 int ImageView::s_nextId = 8000;
@@ -209,45 +298,46 @@ bool ImageView::loadFromFile(const char* filePath) {
     // Wyczyść istniejący obraz
     cleanup();
     
+    if (!ensureGdiplus()) return false;
+    
     // Konwersja ścieżki z UTF-8 na UTF-16
     std::wstring widePath = StringUtils::utf8ToWide(filePath);
     
     // Inicjalizacja GDI+
-    Gdiplus::GdiplusStartupInput gdiplusStartupInput;
-    ULONG_PTR gdiplusToken;
-    Gdiplus::Status status = Gdiplus::GdiplusStartup(&gdiplusToken, &gdiplusStartupInput, NULL);
+    GdiplusStartupInput gdiplusStartupInput = { 1, NULL, FALSE, FALSE };
+    ULONG_PTR gdiplusToken = 0;
+    GpStatus status = pGdiplusStartup(&gdiplusToken, &gdiplusStartupInput, NULL);
     
-    if (status != Gdiplus::Ok) {
+    if (status != 0) {  // 0 = Ok
         return false;
     }
     
     bool success = false;
     
-    // Wczytaj obraz z pliku
-    Gdiplus::Bitmap* bitmap = new Gdiplus::Bitmap(widePath.c_str());
-    if (bitmap && bitmap->GetLastStatus() == Gdiplus::Ok) {
-        // Pobierz wymiary obrazu
-        m_imageWidth = bitmap->GetWidth();
-        m_imageHeight = bitmap->GetHeight();
+    // Wczytaj obraz z pliku (flat API)
+    GpBitmap* bitmap = NULL;
+    if (pGdipCreateBitmapFromFile(widePath.c_str(), &bitmap) == 0 && bitmap) {
+        UINT w = 0, h = 0;
+        pGdipGetImageWidth(bitmap, &w);
+        pGdipGetImageHeight(bitmap, &h);
+        m_imageWidth  = (int)w;
+        m_imageHeight = (int)h;
         
-        // Konwertuj na HBITMAP
-        bitmap->GetHBITMAP(Gdiplus::Color::White, &m_hBitmap);
-        
-        if (m_hBitmap) {
+        // Konwertuj na HBITMAP (White = 0xFFFFFFFF)
+        HBITMAP hbmp = NULL;
+        if (pGdipCreateHBITMAPFromBitmap(bitmap, &hbmp, 0xFFFFFFFF) == 0 && hbmp) {
+            m_hBitmap = hbmp;
             success = true;
             
-            // Wymuś odświeżenie kontrolki
             if (m_hwnd) {
                 InvalidateRect(m_hwnd, NULL, TRUE);
                 UpdateWindow(m_hwnd);
             }
         }
+        pGdipDisposeImage(bitmap);
     }
     
-    // Zwolnij zasoby
-    delete bitmap;
-    Gdiplus::GdiplusShutdown(gdiplusToken);
-    
+    pGdiplusShutdown(gdiplusToken);
     return success;
 }
 
@@ -282,49 +372,49 @@ bool ImageView::loadFromMemory(const void* data, size_t size) {
     // Wyczyść istniejący obraz
     cleanup();
     
-    // Inicjalizacja GDI+
-    Gdiplus::GdiplusStartupInput gdiplusStartupInput;
-    ULONG_PTR gdiplusToken;
-    Gdiplus::Status status = Gdiplus::GdiplusStartup(&gdiplusToken, &gdiplusStartupInput, NULL);
+    if (!ensureGdiplus() || !ensureShlwapi()) return false;
     
-    if (status != Gdiplus::Ok) {
+    // Inicjalizacja GDI+
+    GdiplusStartupInput gdiplusStartupInput = { 1, NULL, FALSE, FALSE };
+    ULONG_PTR gdiplusToken = 0;
+    GpStatus status = pGdiplusStartup(&gdiplusToken, &gdiplusStartupInput, NULL);
+    
+    if (status != 0) {
         return false;
     }
     
     bool success = false;
     
     // Utwórz strumień pamięci
-    IStream* stream = SHCreateMemStream((BYTE*)data, (UINT)size);
+    IStream* stream = pSHCreateMemStream((BYTE*)data, (UINT)size);
     
     if (stream) {
-        // Wczytaj obraz ze strumienia
-        Gdiplus::Bitmap* bitmap = new Gdiplus::Bitmap(stream);
-        if (bitmap && bitmap->GetLastStatus() == Gdiplus::Ok) {
-            // Pobierz wymiary obrazu
-            m_imageWidth = bitmap->GetWidth();
-            m_imageHeight = bitmap->GetHeight();
+        // Wczytaj obraz ze strumienia (flat API)
+        GpBitmap* bitmap = NULL;
+        if (pGdipCreateBitmapFromStream(stream, &bitmap) == 0 && bitmap) {
+            UINT w = 0, h = 0;
+            pGdipGetImageWidth(bitmap, &w);
+            pGdipGetImageHeight(bitmap, &h);
+            m_imageWidth  = (int)w;
+            m_imageHeight = (int)h;
             
-            // Konwertuj na HBITMAP
-            bitmap->GetHBITMAP(Gdiplus::Color::White, &m_hBitmap);
-            
-            if (m_hBitmap) {
+            HBITMAP hbmp = NULL;
+            if (pGdipCreateHBITMAPFromBitmap(bitmap, &hbmp, 0xFFFFFFFF) == 0 && hbmp) {
+                m_hBitmap = hbmp;
                 success = true;
                 
-                // Wymuś odświeżenie kontrolki
                 if (m_hwnd) {
                     InvalidateRect(m_hwnd, NULL, TRUE);
                     UpdateWindow(m_hwnd);
                 }
             }
+            pGdipDisposeImage(bitmap);
         }
         
-        // Zwolnij zasoby
-        delete bitmap;
         stream->Release();
     }
     
-    Gdiplus::GdiplusShutdown(gdiplusToken);
-    
+    pGdiplusShutdown(gdiplusToken);
     return success;
 }
 
