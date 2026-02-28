@@ -2,6 +2,14 @@
 #include <CommCtrl.h>
 #include <WindowsX.h>
 
+/* Fallback defines for MinGW.org that lacks PBS_MARQUEE / PBM_SETMARQUEE */
+#ifndef PBS_MARQUEE
+#define PBS_MARQUEE 0x08
+#endif
+#ifndef PBM_SETMARQUEE
+#define PBM_SETMARQUEE (WM_USER + 10)
+#endif
+
 // Inicjalizacja zmiennej statycznej
 int ProgressBar::s_nextId = 6000;
 
