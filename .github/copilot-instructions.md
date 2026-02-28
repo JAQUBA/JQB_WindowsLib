@@ -69,7 +69,8 @@ src/
 │   └── TabControl/         — zakładki z panelami
 ├── IO/
 │   ├── Serial/             — COM port (wątkowy odbiór, auto-reconnect)
-│   └── BLE/                — Bluetooth LE (SetupAPI, overlapped I/O)
+│   ├── BLE/                — Bluetooth LE (SetupAPI, overlapped I/O)
+│   └── HID/                — USB HID (Feature Reports, enumeracja urządzeń)
 └── Util/
     ├── StringUtils.*       — UTF-8 ↔ UTF-16 ↔ ANSI, extractComPort
     └── ConfigManager.*     — zapis/odczyt key=value (INI-like)
@@ -221,6 +222,22 @@ ble.onScanComplete([&]() {
     }
 });
 ble.onReceive([](auto& data) { /* ... */ });
+```
+
+### HID (USB Human Interface Device)
+
+```cpp
+HID hid;
+hid.init();                          // Ładuje hid.dll dynamicznie
+hid.setVidPid(0x1209, 0xC55D);       // VID/PID urządzenia
+hid.setUsage(0xFF00, 0x01);          // Usage Page + Usage
+hid.setFeatureReportSize(7);         // Rozmiar danych Feature Report
+hid.findAndOpen();                   // Znajdź i otwórz urządzenie
+
+uint8_t buf[7];
+hid.getFeatureReport(2, buf, 7);     // Odczyt Feature Report
+hid.setFeatureReport(2, buf, 7);     // Zapis Feature Report
+hid.close();                         // Zamknij
 ```
 
 ---

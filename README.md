@@ -35,7 +35,7 @@
 |-------|------|
 | **Arduino-like API** | Funkcje `init()`, `setup()`, `loop()` — znany model programowania |
 | **Gotowe komponenty UI** | 12 komponentów: okna, przyciski, etykiety, wykresy, zakładki... |
-| **Komunikacja IO** | Serial (COM), Bluetooth Low Energy (BLE) |
+| **Komunikacja IO** | Serial (COM), Bluetooth Low Energy (BLE), USB HID |
 | **Unicode / UTF-8** | Pełne wsparcie dla polskich znaków i Unicode |
 | **Zarządzanie konfiguracją** | Zapis/odczyt ustawień w formacie INI |
 | **PlatformIO Native** | Budowanie przez PlatformIO (`platform = native`) |
@@ -55,7 +55,7 @@
 │  │   Core    │  │    UI    │  │        IO         │  │
 │  │ WinMain  │  │ Window   │  │ Serial (COM)      │  │
 │  │ MsgLoop  │  │ Button   │  │ BLE (Bluetooth)   │  │
-│  │          │  │ Label    │  │                   │  │
+│  │          │  │ Label    │  │ HID (USB HID)     │  │
 │  │          │  │ Select   │  ├───────────────────┤  │
 │  │          │  │ TextArea │  │       Util        │  │
 │  │          │  │ Chart    │  │ StringUtils       │  │
@@ -177,7 +177,8 @@ JQB_WindowsLib/
     │   └── TabControl/       #   Kontrolka zakładek
     ├── IO/                   # Komunikacja
     │   ├── Serial/           #   Port szeregowy (COM)
-    │   └── BLE/              #   Bluetooth Low Energy
+    │   ├── BLE/              #   Bluetooth Low Energy
+    │   └── HID/              #   USB HID (Feature Reports)
     └── Util/                 # Narzędzia
         ├── StringUtils.*     #   Konwersje UTF-8 ↔ UTF-16
         └── ConfigManager.*   #   Zapis/odczyt konfiguracji INI
@@ -217,6 +218,7 @@ Wszystkie komponenty dziedziczą z `UIComponent` i implementują:
 |-------|------|--------------|
 | **Serial** | Komunikacja przez port COM (RS-232) | [docs/Serial.md](docs/Serial.md) |
 | **BLE** | Bluetooth Low Energy — skanowanie i komunikacja | [docs/BLE.md](docs/BLE.md) |
+| **HID** | USB HID — Feature Reports, enumeracja urządzeń | [docs/HID.md](docs/HID.md) |
 
 ---
 
@@ -370,6 +372,7 @@ Pełna dokumentacja API każdego komponentu znajduje się w katalogu [docs/](doc
 
 - [Serial](docs/Serial.md) — komunikacja COM
 - [BLE](docs/BLE.md) — Bluetooth Low Energy
+- [HID](docs/HID.md) — USB HID (Feature Reports)
 - [StringUtils](docs/StringUtils.md) — konwersje stringów
 - [ConfigManager](docs/ConfigManager.md) — menedżer konfiguracji
 
