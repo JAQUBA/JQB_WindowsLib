@@ -7,6 +7,7 @@
 Serial::Serial() : m_serialHandle(INVALID_HANDLE_VALUE), m_connected(false), 
                    m_onConnectCallback(nullptr), m_onDisconnectCallback(nullptr),
                    m_onReceiveCallback(nullptr), m_stopReadThread(false),
+                   m_readThread(NULL),
                    m_setupapiDll(NULL),
                    pSetupDiGetClassDevsA(NULL), pSetupDiEnumDeviceInfo(NULL),
                    pSetupDiGetDeviceRegistryPropertyA(NULL), pSetupDiDestroyDeviceInfoList(NULL) {
@@ -87,7 +88,7 @@ bool Serial::connect() {
         } else if (error == ERROR_ACCESS_DENIED) {
             errorMsg += L"Dostęp zabroniony. Port może być już używany przez inną aplikację.";
         } else {
-            errorMsg += L"Kod błędu: " + std::to_wstring(error);
+            errorMsg += L"Kod błędu: " + jqb_compat::to_wstring(error);
         }
         
         MessageBoxW(NULL, errorMsg.c_str(), L"Błąd połączenia", MB_ICONERROR);
@@ -100,7 +101,7 @@ bool Serial::connect() {
 
     if (!GetCommState(m_serialHandle, &dcbSerialParams)) {
         DWORD error = GetLastError();
-        MessageBoxW(NULL, (L"Błąd podczas pobierania stanu portu COM! Kod błędu: " + std::to_wstring(error)).c_str(), L"Błąd połączenia", MB_ICONERROR);
+        MessageBoxW(NULL, (L"Błąd podczas pobierania stanu portu COM! Kod błędu: " + jqb_compat::to_wstring(error)).c_str(), L"Błąd połączenia", MB_ICONERROR);
         CloseHandle(m_serialHandle);
         m_serialHandle = INVALID_HANDLE_VALUE;
         return false;
@@ -118,7 +119,7 @@ bool Serial::connect() {
 
     if (!SetCommState(m_serialHandle, &dcbSerialParams)) {
         DWORD error = GetLastError();
-        MessageBoxW(NULL, (L"Błąd podczas konfiguracji portu COM! Kod błędu: " + std::to_wstring(error)).c_str(), L"Błąd połączenia", MB_ICONERROR);
+        MessageBoxW(NULL, (L"Błąd podczas konfiguracji portu COM! Kod błędu: " + jqb_compat::to_wstring(error)).c_str(), L"Błąd połączenia", MB_ICONERROR);
         CloseHandle(m_serialHandle);
         m_serialHandle = INVALID_HANDLE_VALUE;
         return false;
@@ -134,7 +135,7 @@ bool Serial::connect() {
 
     if (!SetCommTimeouts(m_serialHandle, &timeouts)) {
         DWORD error = GetLastError();
-        MessageBoxW(NULL, (L"Błąd podczas konfiguracji timeoutów! Kod błędu: " + std::to_wstring(error)).c_str(), L"Błąd połączenia", MB_ICONERROR);
+        MessageBoxW(NULL, (L"Błąd podczas konfiguracji timeoutów! Kod błędu: " + jqb_compat::to_wstring(error)).c_str(), L"Błąd połączenia", MB_ICONERROR);
         CloseHandle(m_serialHandle);
         m_serialHandle = INVALID_HANDLE_VALUE;
         return false;
@@ -147,7 +148,7 @@ bool Serial::connect() {
     
     // Uruchom wątek odczytu danych
     m_stopReadThread = false;
-    m_readThread = std::thread(&Serial::readThreadFunction, this);
+    m_readThread = CreateThread(NULL, 0, Serial::readThreadWrapper, this, 0, NULL);
     
     // Wywołanie callbacku onConnect, jeśli został zdefiniowany
     if (m_onConnectCallback) {
@@ -159,9 +160,11 @@ bool Serial::connect() {
 
 void Serial::disconnect() {
     // Zatrzymaj wątek odczytu, jeśli działa
-    if (m_readThread.joinable()) {
+    if (m_readThread != NULL) {
         m_stopReadThread = true;
-        m_readThread.join();
+        WaitForSingleObject(m_readThread, INFINITE);
+        CloseHandle(m_readThread);
+        m_readThread = NULL;
     }
     
     if (m_serialHandle != INVALID_HANDLE_VALUE) {
@@ -322,7 +325,7 @@ void Serial::readThreadFunction() {
                     if (consecutiveErrors >= maxConsecutiveErrors) {
                         // Po zbyt wielu błędach, zamknij i ponownie otwórz port
                         disconnect();
-                        std::this_thread::sleep_for(std::chrono::milliseconds(500));
+                        Sleep(500);
                         connect();
                         consecutiveErrors = 0;
                     }
@@ -332,10 +335,15 @@ void Serial::readThreadFunction() {
         catch (const std::exception&) {
             // Obsługa wyjątków
             consecutiveErrors++;
-            std::this_thread::sleep_for(std::chrono::milliseconds(100));
+            Sleep(100);
         }
         
         // Krótkie opóźnienie, aby nie obciążać procesora
-        std::this_thread::sleep_for(std::chrono::milliseconds(10));
+        Sleep(10);
     }
+}
+
+DWORD WINAPI Serial::readThreadWrapper(LPVOID param) {
+    ((Serial*)param)->readThreadFunction();
+    return 0;
 }

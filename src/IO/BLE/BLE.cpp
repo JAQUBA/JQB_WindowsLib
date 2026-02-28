@@ -17,7 +17,9 @@
 // Biblioteki Windows — headers only, DLLs loaded dynamically
 #include <initguid.h>
 #include <setupapi.h>       // struct definitions (SP_DEVICE_INTERFACE_DATA etc.)
-#include <bthdef.h>
+
+// bthdef.h may not be available in MinGW — we don't actually need it
+// since GUID_BTLE_DEVICE_INTERFACE is defined below with DEFINE_GUID
 
 // GUID dla urządzeń BLE
 // {781aee18-7733-4ce4-add0-91f41c67b592} - GUID_BLUETOOTHLE_DEVICE_INTERFACE
@@ -53,9 +55,13 @@ BLE::BLE()
     : m_bleAvailable(false)
     , m_scanning(false)
     , m_connectionState(ConnectionState::DISCONNECTED)
+    , m_scanThread(NULL)
+    , m_connectionThread(NULL)
+    , m_notificationThread(NULL)
     , m_stopScanThread(false)
     , m_stopConnectionThread(false)
     , m_stopNotificationThread(false)
+    , m_scanDurationSeconds(10)
     , m_deviceHandle(INVALID_HANDLE_VALUE)
     , m_serviceHandle(INVALID_HANDLE_VALUE)
     , m_notifyCharacteristicHandle(INVALID_HANDLE_VALUE)
@@ -77,19 +83,25 @@ BLE::~BLE() {
     disconnect();
     stopScan();
     
-    if (m_scanThread.joinable()) {
+    if (m_scanThread != NULL) {
         m_stopScanThread = true;
-        m_scanThread.join();
+        WaitForSingleObject(m_scanThread, INFINITE);
+        CloseHandle(m_scanThread);
+        m_scanThread = NULL;
     }
     
-    if (m_connectionThread.joinable()) {
+    if (m_connectionThread != NULL) {
         m_stopConnectionThread = true;
-        m_connectionThread.join();
+        WaitForSingleObject(m_connectionThread, INFINITE);
+        CloseHandle(m_connectionThread);
+        m_connectionThread = NULL;
     }
     
-    if (m_notificationThread.joinable()) {
+    if (m_notificationThread != NULL) {
         m_stopNotificationThread = true;
-        m_notificationThread.join();
+        WaitForSingleObject(m_notificationThread, INFINITE);
+        CloseHandle(m_notificationThread);
+        m_notificationThread = NULL;
     }
 
     if (m_bthpropsDll) {
@@ -192,9 +204,11 @@ bool BLE::startScan(int durationSeconds) {
     }
     
     // Zatrzymaj poprzednie skanowanie
-    if (m_scanThread.joinable()) {
+    if (m_scanThread != NULL) {
         m_stopScanThread = true;
-        m_scanThread.join();
+        WaitForSingleObject(m_scanThread, INFINITE);
+        CloseHandle(m_scanThread);
+        m_scanThread = NULL;
     }
     
     m_stopScanThread = false;
@@ -203,29 +217,8 @@ bool BLE::startScan(int durationSeconds) {
     m_availableDeviceStrings.clear();
     
     // Uruchom skanowanie w osobnym wątku
-    m_scanThread = std::thread([this, durationSeconds]() {
-        scanThreadFunction();
-        
-        // Czekaj określony czas lub do zatrzymania
-        auto startTime = std::chrono::steady_clock::now();
-        while (!m_stopScanThread) {
-            auto elapsed = std::chrono::duration_cast<std::chrono::seconds>(
-                std::chrono::steady_clock::now() - startTime
-            ).count();
-            
-            if (elapsed >= durationSeconds) {
-                break;
-            }
-            
-            std::this_thread::sleep_for(std::chrono::milliseconds(100));
-        }
-        
-        m_scanning = false;
-        
-        if (m_onScanCompleteCallback) {
-            m_onScanCompleteCallback();
-        }
-    });
+    m_scanDurationSeconds = durationSeconds;
+    m_scanThread = CreateThread(NULL, 0, BLE::scanThreadWrapperStatic, this, 0, NULL);
     
     return true;
 }
@@ -368,15 +361,17 @@ bool BLE::connect(const std::wstring& deviceAddress) {
     m_connectionState = ConnectionState::CONNECTING;
     
     // Zatrzymaj poprzedni wątek połączenia
-    if (m_connectionThread.joinable()) {
+    if (m_connectionThread != NULL) {
         m_stopConnectionThread = true;
-        m_connectionThread.join();
+        WaitForSingleObject(m_connectionThread, INFINITE);
+        CloseHandle(m_connectionThread);
+        m_connectionThread = NULL;
     }
     
     m_stopConnectionThread = false;
     
     // Połączenie w osobnym wątku
-    m_connectionThread = std::thread(&BLE::connectionThreadFunction, this);
+    m_connectionThread = CreateThread(NULL, 0, BLE::connectionThreadWrapperStatic, this, 0, NULL);
     
     return true;
 }
@@ -418,10 +413,12 @@ void BLE::connectionThreadFunction() {
     
     // Uruchom wątek powiadomień
     m_stopNotificationThread = false;
-    if (m_notificationThread.joinable()) {
-        m_notificationThread.join();
+    if (m_notificationThread != NULL) {
+        WaitForSingleObject(m_notificationThread, INFINITE);
+        CloseHandle(m_notificationThread);
+        m_notificationThread = NULL;
     }
-    m_notificationThread = std::thread(&BLE::notificationThreadFunction, this);
+    m_notificationThread = CreateThread(NULL, 0, BLE::notificationThreadWrapperStatic, this, 0, NULL);
 }
 
 void BLE::notificationThreadFunction() {
@@ -473,8 +470,10 @@ void BLE::disconnect() {
     }
     
     m_stopNotificationThread = true;
-    if (m_notificationThread.joinable()) {
-        m_notificationThread.join();
+    if (m_notificationThread != NULL) {
+        WaitForSingleObject(m_notificationThread, INFINITE);
+        CloseHandle(m_notificationThread);
+        m_notificationThread = NULL;
     }
     
     if (m_deviceHandle != INVALID_HANDLE_VALUE) {
@@ -587,4 +586,38 @@ void BLE::onScanComplete(std::function<void()> callback) {
 
 void BLE::onError(std::function<void(const std::wstring&)> callback) {
     m_onErrorCallback = callback;
+}
+
+/* ---- Windows thread wrappers ---- */
+
+DWORD WINAPI BLE::scanThreadWrapperStatic(LPVOID param) {
+    BLE* self = (BLE*)param;
+    self->scanThreadFunction();
+
+    // Wait for the specified duration or until stopped
+    DWORD startTick = GetTickCount();
+    while (!self->m_stopScanThread) {
+        DWORD elapsed = GetTickCount() - startTick;
+        if ((int)(elapsed / 1000) >= self->m_scanDurationSeconds) {
+            break;
+        }
+        Sleep(100);
+    }
+
+    self->m_scanning = false;
+
+    if (self->m_onScanCompleteCallback) {
+        self->m_onScanCompleteCallback();
+    }
+    return 0;
+}
+
+DWORD WINAPI BLE::connectionThreadWrapperStatic(LPVOID param) {
+    ((BLE*)param)->connectionThreadFunction();
+    return 0;
+}
+
+DWORD WINAPI BLE::notificationThreadWrapperStatic(LPVOID param) {
+    ((BLE*)param)->notificationThreadFunction();
+    return 0;
 }

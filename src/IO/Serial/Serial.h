@@ -5,8 +5,12 @@
 #include <string>
 #include <vector>
 #include <functional>
-#include <thread>
 #include <atomic>
+
+/* Forward declaration for setupapi types (loaded dynamically) */
+#ifndef _SETUPAPI_H_
+typedef PVOID HDEVINFO;
+#endif
 
 class Serial {
 public:
@@ -42,10 +46,11 @@ private:
     std::function<void()> m_onDisconnectCallback;
     std::function<void(const std::vector<uint8_t>&)> m_onReceiveCallback;
     
-    // Wątek odczytu danych
-    std::thread m_readThread;
-    std::atomic<bool> m_stopReadThread;
+    // Wątek odczytu danych (Windows API zamiast std::thread)
+    HANDLE m_readThread;
+    volatile bool m_stopReadThread;
     void readThreadFunction();
+    static DWORD WINAPI readThreadWrapper(LPVOID param);
 
     // --- Dynamic library loading (setupapi.dll) ---
     HMODULE m_setupapiDll;

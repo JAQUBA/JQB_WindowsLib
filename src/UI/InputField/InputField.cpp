@@ -6,6 +6,9 @@
 
 // Jeśli definicja EM_SETCUEBANNER nie jest dostępna, zdefiniuj ją
 #ifndef EM_SETCUEBANNER
+#ifndef ECM_FIRST
+#define ECM_FIRST 0x1500
+#endif
 #define EM_SETCUEBANNER (ECM_FIRST + 1)
 #endif
 

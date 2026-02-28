@@ -17,6 +17,11 @@
 #include <functional>
 #include <cstdint>
 
+/* Forward declaration for setupapi types (loaded dynamically) */
+#ifndef _SETUPAPI_H_
+typedef PVOID HDEVINFO;
+#endif
+
 /* Manually defined HID structs (avoids dependency on hidsdi.h / ddk) */
 typedef struct {
     ULONG  Size;

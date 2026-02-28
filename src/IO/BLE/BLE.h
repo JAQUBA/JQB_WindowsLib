@@ -5,9 +5,13 @@
 #include <string>
 #include <vector>
 #include <functional>
-#include <thread>
 #include <atomic>
 #include <map>
+
+/* Forward declaration for setupapi types (loaded dynamically) */
+#ifndef _SETUPAPI_H_
+typedef PVOID HDEVINFO;
+#endif
 
 /* Manually defined Bluetooth structs (avoids dependency on bluetoothapis.h link) */
 typedef struct _BLUETOOTH_FIND_RADIO_PARAMS_BLE {
@@ -109,13 +113,20 @@ private:
     std::atomic<ConnectionState> m_connectionState;
     std::wstring m_selectedDeviceAddress;
     
-    // Wątki
-    std::thread m_scanThread;
-    std::thread m_connectionThread;
-    std::thread m_notificationThread;
+    // Wątki (Windows API zamiast std::thread)
+    HANDLE m_scanThread;
+    HANDLE m_connectionThread;
+    HANDLE m_notificationThread;
     std::atomic<bool> m_stopScanThread;
     std::atomic<bool> m_stopConnectionThread;
     std::atomic<bool> m_stopNotificationThread;
+
+    static DWORD WINAPI scanThreadWrapperStatic(LPVOID param);
+    static DWORD WINAPI connectionThreadWrapperStatic(LPVOID param);
+    static DWORD WINAPI notificationThreadWrapperStatic(LPVOID param);
+
+    // Parametry wątku skanowania
+    int m_scanDurationSeconds;
     
     // Lista odkrytych urządzeń
     std::vector<BLEDevice> m_discoveredDevices;

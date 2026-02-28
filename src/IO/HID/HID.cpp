@@ -7,6 +7,7 @@
 #include "HID.h"
 #include <setupapi.h>       // struct definitions only (loaded dynamically)
 #include <cstring>
+#include <malloc.h>        // alloca()
 
 /* ------------------------------------------------------------------ */
 /*  HIDDevice helpers                                                  */

@@ -276,7 +276,7 @@ void Chart::drawAxes(HDC hdc, const RECT& rect) {
         
         // Formatowanie etykiety
         wchar_t label[32];
-        swprintf_s(label, L"%.2f", value);
+        swprintf(label, 32, L"%.2f", value);
         
         RECT labelRect = {rect.left, y - 8, rect.left + 48, y + 8};
         DrawTextW(hdc, label, -1, &labelRect, DT_RIGHT | DT_VCENTER | DT_SINGLELINE);
@@ -292,7 +292,7 @@ void Chart::drawAxes(HDC hdc, const RECT& rect) {
         
         // Formatowanie etykiety czasu
         wchar_t label[32];
-        swprintf_s(label, L"-%ds", timeValue);
+        swprintf(label, 32, L"-%ds", timeValue);
         
         RECT labelRect = {x - 20, rect.bottom - 20, x + 20, rect.bottom};
         DrawTextW(hdc, label, -1, &labelRect, DT_CENTER | DT_TOP | DT_SINGLELINE);
