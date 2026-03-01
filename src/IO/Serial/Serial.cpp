@@ -8,6 +8,7 @@ DEFINE_GUID(GUID_DEVCLASS_PORTS,
     0x4D36E978, 0xE325, 0x11CE, 0xBF, 0xC1, 0x08, 0x00, 0x2B, 0xE1, 0x03, 0x18);
 
 Serial::Serial() : m_serialHandle(INVALID_HANDLE_VALUE), m_connected(false), 
+                   m_baudRate(CBR_9600),
                    m_onConnectCallback(nullptr), m_onDisconnectCallback(nullptr),
                    m_onReceiveCallback(nullptr), m_stopReadThread(false),
                    m_readThread(NULL),
@@ -110,15 +111,26 @@ bool Serial::connect() {
         return false;
     }
 
-    // Konfiguracja stałych port COM dla urządzenia OWON OW18B
-    dcbSerialParams.BaudRate = CBR_9600;  // 9600 bps
-    dcbSerialParams.ByteSize = 8;         // 8 bitów danych
-    dcbSerialParams.StopBits = ONESTOPBIT;// 1 bit stopu
-    dcbSerialParams.Parity = NOPARITY;    // Brak parzystości
+    // Konfiguracja parametrów portu COM
+    dcbSerialParams.BaudRate = m_baudRate;
+    dcbSerialParams.ByteSize = 8;
+    dcbSerialParams.StopBits = ONESTOPBIT;
+    dcbSerialParams.Parity   = NOPARITY;
+    dcbSerialParams.fBinary  = TRUE;
     
-    // Dodatkowe ustawienia dla lepszej stabilności
-    dcbSerialParams.fDtrControl = DTR_CONTROL_ENABLE;  // Sygnał DTR włączony
-    dcbSerialParams.fRtsControl = RTS_CONTROL_ENABLE;  // Sygnał RTS włączony
+    // Wyłącz flow control (krytyczne dla Bluetooth SPP / HC-06)
+    dcbSerialParams.fOutxCtsFlow   = FALSE;
+    dcbSerialParams.fOutxDsrFlow   = FALSE;
+    dcbSerialParams.fDsrSensitivity = FALSE;
+    dcbSerialParams.fOutX          = FALSE;
+    dcbSerialParams.fInX           = FALSE;
+    dcbSerialParams.fErrorChar     = FALSE;
+    dcbSerialParams.fNull          = FALSE;
+    dcbSerialParams.fAbortOnError  = FALSE;
+    
+    // Sygnały sterujące — asertuj DTR/RTS, bez handshake
+    dcbSerialParams.fDtrControl = DTR_CONTROL_ENABLE;
+    dcbSerialParams.fRtsControl = RTS_CONTROL_ENABLE;
 
     if (!SetCommState(m_serialHandle, &dcbSerialParams)) {
         DWORD error = GetLastError();
@@ -184,6 +196,10 @@ void Serial::disconnect() {
 
 void Serial::setPort(const char* portName) {
     m_portName = portName;
+}
+
+void Serial::setBaudRate(DWORD baudRate) {
+    m_baudRate = baudRate;
 }
 
 void Serial::updateComPorts() {

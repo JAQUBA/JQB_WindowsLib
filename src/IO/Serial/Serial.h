@@ -23,6 +23,7 @@ public:
     bool isConnected() const { return m_connected; }
     
     void setPort(const char* portName);
+    void setBaudRate(DWORD baudRate);
     void updateComPorts();
     const std::vector<std::string>& getAvailablePorts() const { return m_availablePorts; }
     
@@ -39,6 +40,7 @@ private:
     HANDLE m_serialHandle;
     bool m_connected;
     std::string m_portName;
+    DWORD m_baudRate;
     std::vector<std::string> m_availablePorts;
     
     // Callbacki
