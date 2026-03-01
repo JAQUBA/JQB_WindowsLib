@@ -78,6 +78,10 @@ if sys.platform == "win32":
     print("Dodawanie definicji UNICODE")
     env.Append(CPPDEFINES=["UNICODE", "_UNICODE"])
 
+    # Dodaj flagę C++17 (wymagane przez bibliotekę JQB)
+    print("Dodawanie flagi C++17")
+    env.Append(CXXFLAGS=["-std=c++17"])
+
     # Dodaj flagę subsystem,windows przenosząc ją z platformio.ini
     print("Dodawanie flagi subsystem,windows")
     env.Append(LINKFLAGS=["-Wl,-subsystem,windows"])
