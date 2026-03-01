@@ -102,7 +102,7 @@ void ValueDisplay::create(HWND parent) {
     SetWindowLongPtr(m_hwnd, GWLP_USERDATA, (LONG_PTR)this);
     
     // Utworzenie czcionek
-    m_valueFont = CreateFont(
+    m_valueFont = CreateFontW(
         m_height * 3 / 5,                // Wysokość czcionki (60% wysokości kontrolki)
         0, 0, 0,                         // Szerokość, pochylenie, orientacja
         FW_BOLD,                         // Grubość
@@ -115,7 +115,7 @@ void ValueDisplay::create(HWND parent) {
         L"Arial"                         // Nazwa czcionki
     );
     
-    m_unitFont = CreateFont(
+    m_unitFont = CreateFontW(
         m_height / 4,                    // Wysokość czcionki (25% wysokości kontrolki)
         0, 0, 0,
         FW_BOLD,
@@ -128,7 +128,7 @@ void ValueDisplay::create(HWND parent) {
         L"Arial"
     );
     
-    m_statusFont = CreateFont(
+    m_statusFont = CreateFontW(
         m_height / 6,                    // Wysokość czcionki (16% wysokości kontrolki)
         0, 0, 0,
         FW_NORMAL,
