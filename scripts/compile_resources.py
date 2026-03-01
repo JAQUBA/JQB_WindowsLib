@@ -24,7 +24,19 @@ def find_mingw_bin():
     # Wykryj architekturę
     is_64bit = platform_module.machine().endswith('64')
     
-    # Możliwe lokalizacje folderu packages
+    # --- 1. PlatformIO packages directory (JQB_MinGW platform) ---
+    pio_home = os.environ.get(
+        "PLATFORMIO_HOME_DIR",
+        os.path.join(os.path.expanduser("~"), ".platformio"),
+    )
+    pio_packages = os.path.join(pio_home, "packages")
+    for mingw_name in ["toolchain-mingw64", "toolchain-mingw32"]:
+        bin_path = os.path.join(pio_packages, mingw_name, "bin")
+        windres_path = os.path.join(bin_path, "windres.exe")
+        if os.path.exists(windres_path):
+            return bin_path
+    
+    # --- 2. Project-local platform/packages directories ---
     possible_packages = [
         os.path.join(project_dir, "platform", "packages"),
         os.path.join(project_dir, "..", "platform", "packages"),
