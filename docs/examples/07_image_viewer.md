@@ -99,5 +99,5 @@ void loop() {}
 
 4. **linkowanie `comdlg32`** — może być potrzebne dodanie do `build_flags`:
    ```ini
-   build_flags = -std=c++17 -lcomdlg32
+   build_flags = -lcomdlg32
    ```

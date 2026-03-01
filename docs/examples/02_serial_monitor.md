@@ -9,8 +9,6 @@ Monitor portu szeregowego z wyborem portu, przyciskami połączenia i logiem kom
 platform = native
 lib_deps =
     https://github.com/JAQUBA/JQB_WindowsLib.git
-build_flags =
-    -std=c++17
 ```
 
 ## `src/main.cpp`

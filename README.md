@@ -111,16 +111,11 @@ void loop() {
 ```ini
 [env:app]
 platform = native
-framework =
 lib_deps =
     https://github.com/JAQUBA/JQB_WindowsLib.git
-
-build_flags =
-    -std=c++17
-
-extra_scripts =
-    pre:scripts/compile_resources.py   ; opcjonalne — ikona aplikacji
 ```
+
+> **Uwaga:** Biblioteka automatycznie dodaje wymagane flagi: `-std=c++17`, `-DUNICODE`, `-D_UNICODE`, statyczne linkowanie, `subsystem:windows` oraz biblioteki `gdi32`/`comctl32`. Nie musisz ich deklarować ręcznie.
 
 ---
 
@@ -146,8 +141,8 @@ lib_deps =
 ### Wymagania
 
 - **System:** Windows 10+ (x64)
-- **Kompilator:** MinGW-w64 (GCC) — dostarczany przez PlatformIO
-- **C++ Standard:** C++17
+- **Kompilator:** MinGW GCC (MinGW-w64 lub MinGW.org) — dostarczany przez PlatformIO
+- **C++ Standard:** C++17 (dodawany automatycznie przez bibliotekę)
 - **PlatformIO Core:** 6.x+
 
 ---
@@ -158,7 +153,7 @@ lib_deps =
 JQB_WindowsLib/
 ├── library.json              # Manifest PlatformIO
 ├── scripts/
-│   └── compile_resources.py  # Kompilacja zasobów (ikona itp.)
+│   └── compile_resources.py  # Auto-konfiguracja buildu + kompilacja zasobów
 └── src/
     ├── Core.h / Core.cpp     # Rdzeń — WinMain, pętla komunikatów
     ├── UI/                   # Komponenty interfejsu użytkownika
@@ -399,7 +394,7 @@ Biblioteka w pełni obsługuje Unicode. Używaj:
 
 ### Czy mogę użyć bez PlatformIO?
 
-Tak — biblioteka to czysty C++ z WinAPI. Wymaga linkowania: `gdi32`, `comctl32`, `setupapi`, `gdiplus`, `shlwapi`, `bthprops`, `bluetoothapis`, `ole32`, `uuid`. Kompilacja: `g++ -std=c++17 -mwindows ...`
+Tak — biblioteka to czysty C++ z WinAPI. Wymaga linkowania: `gdi32`, `comctl32`. Moduły IO dynamicznie ładują: `setupapi`, `gdiplus`, `shlwapi`, `bthprops`, `hid`. Kompilacja: `g++ -std=c++17 -DUNICODE -D_UNICODE -mwindows -lgdi32 -lcomctl32 ...`
 
 ### Jak stworzyć własny komponent UI?
 

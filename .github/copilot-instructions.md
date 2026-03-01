@@ -18,7 +18,7 @@ Umożliwienie szybkiego tworzenia narzędzi desktopowych (konfiguratory, monitor
 | Platforma | **Windows 10+ (x64)** |
 | GUI | **WinAPI** (natywne kontrolki Windows + custom GDI) |
 | Build system | **PlatformIO** (`platform = native`) |
-| Kompilator | **MinGW-w64 (GCC)** |
+| Kompilator | **MinGW GCC** (kompatybilny z MinGW-w64 i MinGW.org) |
 | Linkowanie | Statyczne (`-static -static-libgcc -static-libstdc++`) |
 | Subsystem | Windows (`-Wl,-subsystem,windows`) |
 
@@ -35,6 +35,38 @@ Umożliwienie szybkiego tworzenia narzędzi desktopowych (konfiguratory, monitor
 | `bthprops.cpl` | IO/BLE | BluetoothFindFirstRadio, BluetoothFindRadioClose, BluetoothGetRadioInfo |
 | `gdiplus.dll` | UI/ImageView | GdiplusStartup/Shutdown, GdipCreateBitmapFrom*, GdipGetImage*, GdipCreateHBITMAPFromBitmap |
 | `shlwapi.dll` | UI/ImageView | SHCreateMemStream |
+
+---
+
+## Auto-konfiguracja buildu (`compile_resources.py`)
+
+Skrypt `scripts/compile_resources.py` jest automatycznie uruchamiany przez PlatformIO i dodaje:
+
+| Flaga | Opis |
+|-------|------|
+| `-DUNICODE -D_UNICODE` | Wymagane przez WinAPI (wersje Wide) |
+| `-std=c++17` | Standard C++ wymagany przez bibliotekę |
+| `-Wl,-subsystem,windows` | Budowanie jako aplikacja Windows (bez konsoli) |
+| `-static-libgcc -static-libstdc++ -static` | Statyczne linkowanie |
+| `-lgdi32 -lcomctl32` | Wymagane biblioteki Windows |
+| Kompilacja `resources.rc` | Ikona i inne zasoby Windows |
+
+> **Nie deklaruj tych flag ręcznie w `platformio.ini`** — są dodawane automatycznie.
+
+---
+
+## Kompatybilność z MinGW.org
+
+Biblioteka jest kompatybilna z **MinGW.org GCC 6.3.0** (model wątków win32), który jest domyślnym kompilatorem PlatformIO `platform = native`. Ograniczenia:
+
+| Brak w MinGW.org | Zamiennik w bibliotece |
+|---|---|
+| `std::thread` | `CreateThread()` (WinAPI) |
+| `std::to_wstring()` | `jqb_compat::to_wstring()` (zdefiniowane w `Core.h`) |
+| `swprintf_s()` | `_snwprintf()` |
+
+> W kodzie aplikacji używaj `CreateThread()` zamiast `std::thread` i `jqb_compat::to_wstring()` zamiast `std::to_wstring()`.
+> Zawsze używaj jawnych wersji Wide WinAPI: `CreateFontW()`, `CreateWindowExW()`, `MessageBoxW()` itp.
 
 ---
 
@@ -62,7 +94,9 @@ extern Core _core;
 
 ```
 src/
-├── Core.h / .cpp          — WinMain, message loop, init/setup/loop
+├── Core.h / .cpp          — WinMain, message loop, init/setup/loop, jqb_compat
+scripts/
+└── compile_resources.py   — auto-konfiguracja buildu (flagi, biblioteki, zasoby)
 ├── UI/
 │   ├── UIComponent.h      — abstrakcyjny interfejs (create, getId, getHandle)
 │   ├── SimpleWindow/       — okno główne (zarządza komponentami, WindowProc)
@@ -277,7 +311,7 @@ baudrate=9600
 
 ## Wskazówki dla Copilota
 
-1. **Zawsze używaj C++17** (`-std=c++17`)
+1. **Zawsze używaj C++17** — standard dodawany automatycznie, nie deklaruj ręcznie
 2. **Główne trzy funkcje:** `init()`, `setup()`, `loop()` — definiowane globalnie, nie w klasie
 3. **Label przyjmuje `wchar_t*`** z prefiksem `L` — inne komponenty UTF-8 `char*`
 4. **Nie usuwaj komponentów dodanych do SimpleWindow** — okno zarządza ich pamięcią
@@ -293,6 +327,8 @@ baudrate=9600
 14. **ValueDisplay** obsługuje double-buffering i nie miga
 15. **TabControl::getTabPage()** zwraca HWND panelu — na nim umieszczaj kontrolki
 16. **Dynamiczne ładowanie DLL:** Moduły IO (Serial, BLE, HID) i ImageView ładują swoje DLL przez `LoadLibrary`/`GetProcAddress` w `init()`. Jedyne statycznie linkowane biblioteki to `gdi32` i `comctl32`.
+17. **MinGW.org compat:** Nie używaj `std::thread` (użyj `CreateThread`), `std::to_wstring` (użyj `jqb_compat::to_wstring`), `swprintf_s` (użyj `_snwprintf`).
+18. **WinAPI Wide:** Zawsze używaj jawnych wersji `W`: `CreateFontW()`, `CreateWindowExW()`, `MessageBoxW()`.
 
 ### Typowy layout aplikacji
 
@@ -318,9 +354,9 @@ baudrate=9600
 platform = native
 lib_deps =
     https://github.com/JAQUBA/JQB_WindowsLib.git
-build_flags =
-    -std=c++17
 ```
+
+> Flagi C++17, UNICODE, statyczne linkowanie i biblioteki są dodawane automatycznie przez `compile_resources.py`.
 
 ### Minimalny `main.cpp`
 

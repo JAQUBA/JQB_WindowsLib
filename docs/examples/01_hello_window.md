@@ -9,8 +9,6 @@ Minimalna aplikacja z oknem, etykietą i przyciskiem.
 platform = native
 lib_deps =
     https://github.com/JAQUBA/JQB_WindowsLib.git
-build_flags =
-    -std=c++17
 ```
 
 ## `src/main.cpp`

@@ -21,9 +21,9 @@ Szybki przewodnik uruchomienia pierwszej aplikacji.
 platform = native
 lib_deps =
     https://github.com/JAQUBA/JQB_WindowsLib.git
-build_flags =
-    -std=c++17
 ```
+
+> Flagi C++17, UNICODE, statyczne linkowanie i biblioteki są dodawane automatycznie przez bibliotekę.
 
 ### `src/main.cpp`
 
