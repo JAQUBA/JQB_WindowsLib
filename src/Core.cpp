@@ -5,7 +5,7 @@ Core::Core() {
 }
 Core _core;
 
-int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine, int nCmdShow) {
+int WINAPI wWinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPWSTR lpCmdLine, int nCmdShow) {
     
     _core.hInstance = hInstance;
     _core.hPrevInstance = hPrevInstance;

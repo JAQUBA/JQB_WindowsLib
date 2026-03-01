@@ -90,9 +90,21 @@ if sys.platform == "win32":
     print("Dodawanie definicji UNICODE")
     env.Append(CPPDEFINES=["UNICODE", "_UNICODE"])
 
+    # Wymuś nowe ABI C++11 w libstdc++ (lepsza kompatybilność std::string)
+    print("Dodawanie _GLIBCXX_USE_CXX11_ABI=1")
+    env.Append(CPPDEFINES=[("_GLIBCXX_USE_CXX11_ABI", "1")])
+
     # Dodaj flagę C++17 (wymagane przez bibliotekę JQB)
     print("Dodawanie flagi C++17")
     env.Append(CXXFLAGS=["-std=c++17"])
+
+    # Wymuś UTF-8 jako kodowanie źródeł i execution charset
+    print("Dodawanie flag kodowania UTF-8")
+    env.Append(CXXFLAGS=["-finput-charset=UTF-8", "-fexec-charset=UTF-8"])
+
+    # Unicode entry point (wWinMain zamiast WinMain)
+    print("Dodawanie flagi -municode")
+    env.Append(LINKFLAGS=["-municode"])
 
     # Dodaj flagę subsystem,windows przenosząc ją z platformio.ini
     print("Dodawanie flagi subsystem,windows")

@@ -51,7 +51,7 @@ class Core {
     public:
         HINSTANCE hInstance;
         HINSTANCE hPrevInstance;
-        LPSTR lpCmdLine;
+        LPWSTR lpCmdLine;
         int nCmdShow;
         Core();
 };
