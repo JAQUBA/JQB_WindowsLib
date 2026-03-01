@@ -252,6 +252,23 @@ bool HID::findAndOpen() {
         if (h == INVALID_HANDLE_VALUE) continue;
 
         if (matchDevice(h)) {
+            /* Close the enumeration handle (opened with access=0)
+               and re-open with read/write access for Feature Reports. */
+            CloseHandle(h);
+            h = CreateFileA(
+                devPath.c_str(),
+                GENERIC_READ | GENERIC_WRITE,
+                FILE_SHARE_READ | FILE_SHARE_WRITE,
+                NULL,
+                OPEN_EXISTING,
+                0,
+                NULL);
+            if (h == INVALID_HANDLE_VALUE) {
+                pSetupDiDestroyDeviceInfoList(devInfo);
+                if (m_onErrorCallback)
+                    m_onErrorCallback("Matched HID device but failed to open for read/write");
+                return false;
+            }
             m_handle = h;
             m_open   = true;
             pSetupDiDestroyDeviceInfoList(devInfo);
@@ -381,7 +398,7 @@ bool HID::open(const std::string& devicePath) {
 
     HANDLE h = CreateFileA(
         devicePath.c_str(),
-        0,
+        GENERIC_READ | GENERIC_WRITE,
         FILE_SHARE_READ | FILE_SHARE_WRITE,
         NULL,
         OPEN_EXISTING,
