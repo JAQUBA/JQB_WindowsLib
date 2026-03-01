@@ -9,6 +9,26 @@ int TabControl::s_nextId = 7000;
 // Mapa do przechowywania wskaźników na obiekty TabControl według ich HWND
 static std::map<HWND, TabControl*> tabControlsByHwnd;
 
+// Subclass ID dla tab pages (forward WM_COMMAND do głównego okna)
+static const UINT_PTR TAB_PAGE_SUBCLASS_ID = 42;
+
+static LRESULT CALLBACK TabPageSubclassProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam,
+                                             UINT_PTR uIdSubclass, DWORD_PTR dwRefData) {
+    (void)uIdSubclass;
+    (void)dwRefData;
+    if (uMsg == WM_COMMAND) {
+        // Przekaż WM_COMMAND do okna głównego (root ancestor)
+        HWND hRoot = GetAncestor(hwnd, GA_ROOT);
+        if (hRoot) {
+            return SendMessageW(hRoot, uMsg, wParam, lParam);
+        }
+    }
+    if (uMsg == WM_NCDESTROY) {
+        RemoveWindowSubclass(hwnd, TabPageSubclassProc, TAB_PAGE_SUBCLASS_ID);
+    }
+    return DefSubclassProc(hwnd, uMsg, wParam, lParam);
+}
+
 TabControl::TabControl(int x, int y, int width, int height)
     : m_x(x), m_y(y), m_width(width), m_height(height), 
       m_hwnd(NULL), m_onTabChangeCallback(nullptr) {
@@ -116,6 +136,9 @@ int TabControl::addTab(const char* title) {
         TabCtrl_DeleteItem(m_hwnd, index);
         return -1;
     }
+    
+    // Subclass tab page — przekazuje WM_COMMAND do głównego okna
+    SetWindowSubclass(hTabPage, TabPageSubclassProc, TAB_PAGE_SUBCLASS_ID, 0);
     
     // Dodaj stronę do wektora
     m_tabPages.push_back(hTabPage);
