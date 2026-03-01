@@ -74,6 +74,10 @@ if sys.platform == "win32":
     # Dodaj plik .res do procesu linkowania
     env.Append(LINKFLAGS=[res_file])
     
+    # Dodaj definicje Unicode (wymagane przez WinAPI)
+    print("Dodawanie definicji UNICODE")
+    env.Append(CPPDEFINES=["UNICODE", "_UNICODE"])
+
     # Dodaj flagę subsystem,windows przenosząc ją z platformio.ini
     print("Dodawanie flagi subsystem,windows")
     env.Append(LINKFLAGS=["-Wl,-subsystem,windows"])
