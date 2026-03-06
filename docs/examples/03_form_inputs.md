@@ -1,6 +1,6 @@
-# Przykład 03 — Form Inputs
+# Example 03 — Form Inputs
 
-Formularz demonstracyjny z InputField, CheckBox, Select i przyciskiem zatwierdzenia.
+Demo form with InputField, CheckBox, Select, and a submit button.
 
 ## `src/main.cpp`
 
@@ -25,86 +25,86 @@ TextArea*      txtResult;
 ConfigManager  config("form_settings.ini");
 
 void setup() {
-    window = new SimpleWindow(500, 450, "Formularz", 0);
+    window = new SimpleWindow(500, 450, "Form", 0);
     window->init();
 
     int y = 15;
     const int LX = 15, SX = 150, LW = 130, SW = 320;
 
-    // --- Imię ---
-    window->add(new Label(LX, y, LW, 22, L"Imię:"));
+    // --- Name ---
+    window->add(new Label(LX, y, LW, 22, L"Name:"));
     inputName = new InputField(SX, y, SW, 25, "", nullptr);
-    inputName->setPlaceholder("Wpisz imię...");
+    inputName->setPlaceholder("Enter name...");
     inputName->setMaxLength(50);
     window->add(inputName);
     y += 35;
 
-    // --- Hasło ---
-    window->add(new Label(LX, y, LW, 22, L"Hasło:"));
+    // --- Password ---
+    window->add(new Label(LX, y, LW, 22, L"Password:"));
     inputPassword = new InputField(SX, y, SW, 25, "", nullptr);
-    inputPassword->setPlaceholder("Wpisz hasło...");
+    inputPassword->setPlaceholder("Enter password...");
     inputPassword->setPasswordMode(true);
     window->add(inputPassword);
     y += 35;
 
-    // --- Rola ---
-    window->add(new Label(LX, y, LW, 22, L"Rola:"));
-    selRole = new Select(SX, y, SW, 200, "Użytkownik", [](Select* sel) {
-        // Opcjonalny callback przy zmianie
+    // --- Role ---
+    window->add(new Label(LX, y, LW, 22, L"Role:"));
+    selRole = new Select(SX, y, SW, 200, "User", [](Select* sel) {
+        // Optional callback on change
     });
     window->add(selRole);
     selRole->addItem("Administrator");
-    selRole->addItem("Użytkownik");
-    selRole->addItem("Gość");
+    selRole->addItem("User");
+    selRole->addItem("Guest");
     y += 35;
 
     // --- Checkbox ---
-    chkRemember = new CheckBox(SX, y, SW, 22, "Zapamiętaj ustawienia", false,
+    chkRemember = new CheckBox(SX, y, SW, 22, "Remember settings", false,
         [](CheckBox* cb, bool checked) {
-            // Reakcja natychmiastowa (opcjonalnie)
+            // Immediate reaction (optional)
         });
     window->add(chkRemember);
     y += 35;
 
-    // --- Przycisk zatwierdzenia ---
-    window->add(new Button(SX, y, 150, 32, "Zatwierdź", [](Button*) {
+    // --- Submit button ---
+    window->add(new Button(SX, y, 150, 32, "Submit", [](Button*) {
         const char* name = inputName->getText();
         const char* pass = inputPassword->getText();
         const char* role = selRole->getText();
         bool remember = chkRemember->isChecked();
 
-        // Wyświetl podsumowanie
+        // Display summary
         std::string summary;
-        summary += "Imię: ";
-        summary += (name ? name : "(puste)");
-        summary += "\r\nRola: ";
-        summary += (role ? role : "(brak)");
-        summary += "\r\nZapamiętaj: ";
-        summary += (remember ? "TAK" : "NIE");
+        summary += "Name: ";
+        summary += (name ? name : "(empty)");
+        summary += "\r\nRole: ";
+        summary += (role ? role : "(none)");
+        summary += "\r\nRemember: ";
+        summary += (remember ? "YES" : "NO");
         summary += "\r\n";
 
         txtResult->setText(StringUtils::utf8ToWide(summary).c_str());
 
-        // Zapis do konfiguracji jeśli zaznaczony checkbox
+        // Save to config if checkbox is checked
         if (remember) {
             config.setValue("name", name ? name : "");
             config.setValue("role", role ? role : "");
         }
     }));
 
-    window->add(new Button(SX + 160, y, 150, 32, "Wyczyść", [](Button*) {
+    window->add(new Button(SX + 160, y, 150, 32, "Clear", [](Button*) {
         inputName->setText("");
         inputPassword->setText("");
         txtResult->setText(L"");
     }));
     y += 45;
 
-    // --- Wynik ---
-    window->add(new Label(LX, y, LW, 22, L"Wynik:"));
+    // --- Result ---
+    window->add(new Label(LX, y, LW, 22, L"Result:"));
     txtResult = new TextArea(SX, y, SW, 120, nullptr);
     window->add(txtResult);
 
-    // --- Odczytaj zapamiętane wartości ---
+    // --- Load saved values ---
     std::string savedName = config.getValue("name", "");
     std::string savedRole = config.getValue("role", "");
     if (!savedName.empty()) {
@@ -115,12 +115,12 @@ void setup() {
 void loop() {}
 ```
 
-## Kluczowe punkty
+## Key Points
 
-1. **InputField** — `setPlaceholder()` ustawia tekst podpowiedzi, `setPasswordMode(true)` ukrywa znaki
-2. **InputField::setMaxLength(n)** — limit znaków
-3. **CheckBox** — konstruktor: `(x, y, w, h, text, defaultState, callback)`
-4. **CheckBox::isChecked()** — odczyt aktualnego stanu
-5. **Select::addItem()** — dodawanie elementów po utworzeniu
-6. **ConfigManager** — `setValue()` / `getValue()` do trwałego zapisu ustawień
-7. **TextArea** — readonly, idealny do wyświetlania wyników
+1. **InputField** — `setPlaceholder()` sets hint text, `setPasswordMode(true)` masks characters
+2. **InputField::setMaxLength(n)** — character limit
+3. **CheckBox** — constructor: `(x, y, w, h, text, defaultState, callback)`
+4. **CheckBox::isChecked()** — reads the current state
+5. **Select::addItem()** — adds items after creation
+6. **ConfigManager** — `setValue()` / `getValue()` for persistent settings storage
+7. **TextArea** — readonly, ideal for displaying results

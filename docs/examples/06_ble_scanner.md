@@ -1,6 +1,6 @@
-# Przykład 06 — BLE Scanner
+# Example 06 — BLE Scanner
 
-Skaner urządzeń Bluetooth Low Energy z listą znalezionych urządzeń i logiem.
+Bluetooth Low Energy device scanner with a discovered device list and log.
 
 ## `src/main.cpp`
 
@@ -37,47 +37,47 @@ void setup() {
 
     int y = 10;
 
-    lblStatus = new Label(10, y, 400, 22, L"Status: Gotowy");
+    lblStatus = new Label(10, y, 400, 22, L"Status: Ready");
     window->add(lblStatus);
     y += 30;
 
-    // --- Pasek skanowania ---
+    // --- Scan progress bar ---
     progressScan = new ProgressBar(10, y, 620, 20);
     window->add(progressScan);
     y += 30;
 
-    // --- Przyciski ---
-    btnScan = new Button(10, y, 130, 30, "Skanuj (10s)", [](Button*) {
-        lblStatus->setText(L"Status: Skanowanie...");
+    // --- Buttons ---
+    btnScan = new Button(10, y, 130, 30, "Scan (10s)", [](Button*) {
+        lblStatus->setText(L"Status: Scanning...");
         progressScan->setMarquee(true);
         deviceNames.clear();
         selDevices->updateItems(deviceNames);
         txtLog->setText(L"");
-        logMsg(L"Rozpoczynam skanowanie BLE...");
+        logMsg(L"Starting BLE scan...");
         ble.startScan(10);
     });
     window->add(btnScan);
 
-    btnConnect = new Button(150, y, 130, 30, "Połącz", [](Button*) {
+    btnConnect = new Button(150, y, 130, 30, "Connect", [](Button*) {
         auto& devices = ble.getDiscoveredDevices();
         int idx = (int)SendMessage(selDevices->getHandle(), CB_GETCURSEL, 0, 0);
         if (idx >= 0 && idx < (int)devices.size()) {
-            logMsg(L"Łączenie...");
+            logMsg(L"Connecting...");
             ble.connect(devices[idx].address);
         } else {
-            logMsg(L"Wybierz urządzenie z listy!");
+            logMsg(L"Select a device from the list!");
         }
     });
     window->add(btnConnect);
 
-    window->add(new Button(290, y, 130, 30, "Rozłącz", [](Button*) {
+    window->add(new Button(290, y, 130, 30, "Disconnect", [](Button*) {
         ble.disconnect();
     }));
     y += 40;
 
-    // --- Lista urządzeń ---
-    window->add(new Label(10, y, 150, 22, L"Znalezione:"));
-    selDevices = new Select(160, y, 470, 200, "(brak)", nullptr);
+    // --- Device list ---
+    window->add(new Label(10, y, 150, 22, L"Discovered:"));
+    selDevices = new Select(160, y, 470, 200, "(none)", nullptr);
     window->add(selDevices);
     y += 35;
 
@@ -85,13 +85,13 @@ void setup() {
     txtLog = new TextArea(10, y, 620, 250, nullptr);
     window->add(txtLog);
 
-    // --- Callbacki BLE ---
+    // --- BLE callbacks ---
     ble.onDeviceDiscovered([](const BLEDevice& dev) {
-        std::wstring msg = L"Znaleziono: " + dev.name +
+        std::wstring msg = L"Found: " + dev.name +
             L" [" + dev.address + L"]";
         logMsg(msg.c_str());
 
-        // Dodaj do selecta
+        // Add to select
         std::string nameUtf8 = StringUtils::wideToUtf8(dev.name);
         deviceNames.push_back(nameUtf8);
         selDevices->updateItems(deviceNames);
@@ -100,26 +100,26 @@ void setup() {
     ble.onScanComplete([]() {
         progressScan->setMarquee(false);
         progressScan->setProgress(100);
-        lblStatus->setText(L"Status: Skanowanie zakończone");
+        lblStatus->setText(L"Status: Scan complete");
         
         auto& devices = ble.getDiscoveredDevices();
         wchar_t buf[64];
-        swprintf(buf, 64, L"Znaleziono %d urządzeń", (int)devices.size());
+        swprintf(buf, 64, L"Found %d devices", (int)devices.size());
         logMsg(buf);
     });
 
     ble.onConnect([]() {
-        lblStatus->setText(L"Status: Połączony");
-        logMsg(L"--- Połączono z urządzeniem BLE ---");
+        lblStatus->setText(L"Status: Connected");
+        logMsg(L"--- Connected to BLE device ---");
     });
 
     ble.onDisconnect([]() {
-        lblStatus->setText(L"Status: Rozłączony");
-        logMsg(L"--- Rozłączono ---");
+        lblStatus->setText(L"Status: Disconnected");
+        logMsg(L"--- Disconnected ---");
     });
 
     ble.onReceive([](const std::vector<uint8_t>& data) {
-        std::wstring msg = L"RX [" + std::to_wstring(data.size()) + L" B]: ";
+        std::wstring msg = L"RX [" + jqb_compat::to_wstring(data.size()) + L" B]: ";
         for (uint8_t b : data) {
             wchar_t hex[4];
             swprintf(hex, 4, L"%02X ", b);
@@ -129,37 +129,37 @@ void setup() {
     });
 
     ble.onError([](const std::wstring& errMsg) {
-        std::wstring msg = L"BŁĄD: " + errMsg;
+        std::wstring msg = L"ERROR: " + errMsg;
         logMsg(msg.c_str());
-        lblStatus->setText(L"Status: Błąd");
+        lblStatus->setText(L"Status: Error");
         progressScan->setMarquee(false);
     });
 
-    // --- Inicjalizacja ---
+    // --- Init ---
     ble.init();
-    logMsg(L"Adapter BLE zainicjalizowany.");
+    logMsg(L"BLE adapter initialized.");
 }
 
 void loop() {}
 ```
 
-## Kluczowe punkty
+## Key Points
 
-1. **BLE** — komunikacja Bluetooth Low Energy
-   - `init()` — sprawdza adapter BT, musi być wywołane przed innymi operacjami
-   - `startScan(seconds)` — skanuje przez podany czas
-   - `connect(address)` — łączy się z urządzeniem po adresie
-   - `disconnect()` — rozłącza
+1. **BLE** — Bluetooth Low Energy communication
+   - `init()` — checks the BT adapter, must be called before other operations
+   - `startScan(seconds)` — scans for the given duration
+   - `connect(address)` — connects to a device by address
+   - `disconnect()` — disconnects
 
-2. **Callbacki BLE**:
-   - `onDeviceDiscovered()` — wywoływany dla każdego znalezionego urządzenia
-   - `onScanComplete()` — skanowanie zakończone
-   - `onConnect()` / `onDisconnect()` — zmiana stanu połączenia
-   - `onReceive()` — odebrano dane
-   - `onError()` — błąd (np. brak adaptera)
+2. **BLE callbacks**:
+   - `onDeviceDiscovered()` — called for each found device
+   - `onScanComplete()` — scan finished
+   - `onConnect()` / `onDisconnect()` — connection state change
+   - `onReceive()` — data received
+   - `onError()` — error (e.g. no adapter)
 
 3. **BLEDevice** struct:
-   - `name` — `std::wstring` (nazwa urządzenia)
-   - `address` — `std::wstring` (adres MAC)
+   - `name` — `std::wstring` (device name)
+   - `address` — `std::wstring` (MAC address)
 
-4. **ProgressBar::setMarquee(true)** — animacja ciągła (bez wartości %)
+4. **ProgressBar::setMarquee(true)** — continuous animation (no % value)

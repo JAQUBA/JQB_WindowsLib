@@ -10,7 +10,8 @@ DEFINE_GUID(GUID_DEVCLASS_PORTS,
 Serial::Serial() : m_serialHandle(INVALID_HANDLE_VALUE), m_connected(false), 
                    m_baudRate(CBR_9600),
                    m_onConnectCallback(nullptr), m_onDisconnectCallback(nullptr),
-                   m_onReceiveCallback(nullptr), m_stopReadThread(false),
+                   m_onReceiveCallback(nullptr), m_onErrorCallback(nullptr),
+                   m_stopReadThread(false), m_connectionLost(false),
                    m_readThread(NULL),
                    m_setupapiDll(NULL),
                    pSetupDiGetClassDevsA(NULL), pSetupDiEnumDeviceInfo(NULL),
@@ -160,6 +161,7 @@ bool Serial::connect() {
     PurgeComm(m_serialHandle, PURGE_TXCLEAR | PURGE_RXCLEAR);
 
     m_connected = true;
+    m_connectionLost = false;  // Reset flagi błędu
     
     // Uruchom wątek odczytu danych
     m_stopReadThread = false;
@@ -175,12 +177,7 @@ bool Serial::connect() {
 
 void Serial::disconnect() {
     // Zatrzymaj wątek odczytu, jeśli działa
-    if (m_readThread != NULL) {
-        m_stopReadThread = true;
-        WaitForSingleObject(m_readThread, INFINITE);
-        CloseHandle(m_readThread);
-        m_readThread = NULL;
-    }
+    stopReadThread();
     
     if (m_serialHandle != INVALID_HANDLE_VALUE) {
         // Wywołanie callbacku onDisconnect przed zamknięciem portu, jeśli został zdefiniowany
@@ -192,6 +189,25 @@ void Serial::disconnect() {
         m_serialHandle = INVALID_HANDLE_VALUE;
     }
     m_connected = false;
+    m_connectionLost = false;
+}
+
+void Serial::stopReadThread() {
+    if (m_readThread != NULL) {
+        m_stopReadThread = true;
+        
+        // Czekaj maksymalnie 2 sekundy na zakończenie wątku
+        DWORD waitResult = WaitForSingleObject(m_readThread, 2000);
+        
+        if (waitResult == WAIT_TIMEOUT) {
+            // Wątek nie zakończył się w czasie - wymuś zamknięcie
+            OutputDebugStringA("Serial::stopReadThread - Timeout, terminating thread\n");
+            TerminateThread(m_readThread, 0);
+        }
+        
+        CloseHandle(m_readThread);
+        m_readThread = NULL;
+    }
 }
 
 void Serial::setPort(const char* portName) {
@@ -306,6 +322,10 @@ void Serial::onReceive(std::function<void(const std::vector<uint8_t>&)> callback
     m_onReceiveCallback = callback;
 }
 
+void Serial::onError(std::function<void()> callback) {
+    m_onErrorCallback = callback;
+}
+
 bool Serial::send(const std::vector<uint8_t>& data) {
     // Wrapper dla metody write, może być w przyszłości rozbudowany
     return write(data);
@@ -319,13 +339,15 @@ void Serial::readThreadFunction() {
     const int maxConsecutiveErrors = 10;
     
     while (!m_stopReadThread) {
-        try {
-            // Sprawdź, czy port jest otwarty
-            if (m_serialHandle != INVALID_HANDLE_VALUE && m_connected) {
-                // Sprawdź dostępne dane przed odczytem
-                DWORD errors;
-                COMSTAT stat;
-                if (ClearCommError(m_serialHandle, &errors, &stat) && stat.cbInQue > 0) {
+        // Sprawdź, czy port jest otwarty
+        if (m_serialHandle != INVALID_HANDLE_VALUE && m_connected) {
+            // Sprawdź dostępne dane przed odczytem
+            DWORD errors = 0;
+            COMSTAT stat;
+            memset(&stat, 0, sizeof(stat));
+            
+            if (ClearCommError(m_serialHandle, &errors, &stat)) {
+                if (stat.cbInQue > 0) {
                     // Ograniczenie rozmiaru bufora do dostępnych danych
                     size_t bytesToRead = std::min(bufferSize, static_cast<size_t>(stat.cbInQue));
                     
@@ -337,24 +359,49 @@ void Serial::readThreadFunction() {
                         }
                         consecutiveErrors = 0; // Zresetuj licznik błędów po udanym odczycie
                     }
-                } else if (errors > 0) {
+                }
+                
+                if (errors > 0) {
                     // Obsługa błędów komunikacyjnych
                     consecutiveErrors++;
-                    
-                    if (consecutiveErrors >= maxConsecutiveErrors) {
-                        // Po zbyt wielu błędach, zamknij i ponownie otwórz port
-                        disconnect();
-                        Sleep(500);
-                        connect();
-                        consecutiveErrors = 0;
-                    }
+                    char buf[128];
+                    snprintf(buf, sizeof(buf), "Serial: Comm error=0x%lX, count=%d\n", errors, consecutiveErrors);
+                    OutputDebugStringA(buf);
                 }
+            } else {
+                // ClearCommError nie udało się - port prawdopodobnie został odłączony
+                DWORD lastError = GetLastError();
+                
+                // ERROR_INVALID_HANDLE (6), ERROR_BAD_COMMAND (22) - port odłączony
+                if (lastError == ERROR_INVALID_HANDLE || lastError == ERROR_BAD_COMMAND || 
+                    lastError == ERROR_ACCESS_DENIED || lastError == ERROR_NOT_READY) {
+                    OutputDebugStringA("Serial: Port disconnected, signaling error\n");
+                    m_connectionLost = true;
+                    m_connected = false;
+                    
+                    // Wywołaj callback błędu (aby aplikacja mogła zareagować)
+                    if (m_onErrorCallback) {
+                        m_onErrorCallback();
+                    }
+                    break;  // Wyjdź z pętli - nie próbuj dalej czytać
+                }
+                consecutiveErrors++;
             }
-        }
-        catch (const std::exception&) {
-            // Obsługa wyjątków
-            consecutiveErrors++;
-            Sleep(100);
+            
+            // Po zbyt wielu błędach sygnalizuj utratę połączenia
+            if (consecutiveErrors >= maxConsecutiveErrors) {
+                OutputDebugStringA("Serial: Too many errors, signaling connection lost\n");
+                m_connectionLost = true;
+                m_connected = false;
+                
+                if (m_onErrorCallback) {
+                    m_onErrorCallback();
+                }
+                break;  // Wyjdź z pętli
+            }
+        } else {
+            // Port nie jest otwarty - wyjdź z pętli
+            break;
         }
         
         // Krótkie opóźnienie, aby nie obciążać procesora

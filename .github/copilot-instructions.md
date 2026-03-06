@@ -1,130 +1,136 @@
 # JQB_WindowsLib — Copilot Instructions
 
-## Projekt
+## Project
 
-Biblioteka C++ do tworzenia **natywnych aplikacji desktopowych Windows** z GUI.  
-Inspirowana stylem Arduino (`setup()` / `loop()`), ukrywa złożoność WinAPI za prostym, obiektowym interfejsem.
+A C++ library for building **native Windows desktop applications** with GUI.
+Inspired by Arduino-style programming (`setup()` / `loop()`), it hides WinAPI complexity behind a simple, object-oriented interface.
 
-### Cel biblioteki
-Umożliwienie szybkiego tworzenia narzędzi desktopowych (konfiguratory, monitory, dashboardy) dla urządzeń embedded komunikujących się przez Serial (COM), BLE lub HID.
+### Purpose
+Enable rapid creation of desktop tools (configurators, monitors, dashboards) for embedded devices communicating via Serial (COM), BLE, or HID.
 
 ---
 
-## Architektura i technologie
+## Architecture & Technology
 
-| Parametr | Wartość |
+| Parameter | Value |
 |---|---|
-| Język | **C++17** |
-| Platforma | **Windows 10+ (x64)** |
-| GUI | **WinAPI** (natywne kontrolki Windows + custom GDI) |
+| Language | **C++17** |
+| Platform | **Windows 10+ (x64)** |
+| GUI | **WinAPI** (native controls + custom GDI) |
 | Build system | **PlatformIO** (`platform = native`) |
-| Kompilator | **MinGW GCC** (kompatybilny z MinGW-w64 i MinGW.org) |
-| Linkowanie | Statyczne (`-static -static-libgcc -static-libstdc++`) |
+| Compiler | **MinGW GCC** (compatible with MinGW-w64 and MinGW.org) |
+| Linking | Static (`-static -static-libgcc -static-libstdc++`) |
 | Subsystem | Windows (`-Wl,-subsystem,windows`) |
 
-### Linkowane biblioteki
+### Linked Libraries
 
-**Statycznie** (zawsze): `gdi32`, `comctl32`
+**Statically** (always): `gdi32`, `comctl32`
 
-**Dynamicznie** (LoadLibrary/GetProcAddress w `init()`):
+**Dynamically** (LoadLibrary/GetProcAddress in `init()`):
 
-| DLL | Moduł | Funkcje |
-|-----|-------|---------|
+| DLL | Module | Functions |
+|-----|--------|-----------|
 | `hid.dll` | IO/HID | HidD_GetHidGuid, HidD_GetAttributes, HidD_Get/SetFeature, HidP_GetCaps |
 | `setupapi.dll` | IO/HID, IO/Serial, IO/BLE | SetupDiGetClassDevs, SetupDiEnumDevice*, SetupDiGetDeviceInterfaceDetail, SetupDiGetDeviceRegistryProperty, SetupDiDestroyDeviceInfoList |
 | `bthprops.cpl` | IO/BLE | BluetoothFindFirstRadio, BluetoothFindRadioClose, BluetoothGetRadioInfo |
+| `BluetoothApis.dll` | IO/BLE | BluetoothGATTGetServices, BluetoothGATTGetCharacteristics, BluetoothGATTGetDescriptors, BluetoothGATTSetDescriptorValue, BluetoothGATTSetCharacteristicValue, BluetoothGATTRegisterEvent, BluetoothGATTUnregisterEvent |
 | `gdiplus.dll` | UI/ImageView | GdiplusStartup/Shutdown, GdipCreateBitmapFrom*, GdipGetImage*, GdipCreateHBITMAPFromBitmap |
 | `shlwapi.dll` | UI/ImageView | SHCreateMemStream |
+| `uxtheme.dll` | UI/ProgressBar | SetWindowTheme (disables visual styles for custom colors) |
 
 ---
 
-## Auto-konfiguracja buildu (`compile_resources.py`)
+## Build Auto-Configuration (`compile_resources.py`)
 
-Skrypt `scripts/compile_resources.py` jest automatycznie uruchamiany przez PlatformIO i dodaje:
+The script `scripts/compile_resources.py` runs automatically via PlatformIO and adds:
 
-| Flaga | Opis |
-|-------|------|
-| `-DUNICODE -D_UNICODE` | Wymagane przez WinAPI (wersje Wide) |
-| `-std=c++17` | Standard C++ wymagany przez bibliotekę |
-| `-Wl,-subsystem,windows` | Budowanie jako aplikacja Windows (bez konsoli) |
-| `-static-libgcc -static-libstdc++ -static` | Statyczne linkowanie |
-| `-lgdi32 -lcomctl32` | Wymagane biblioteki Windows |
-| Kompilacja `resources.rc` | Ikona i inne zasoby Windows |
+| Flag | Description |
+|------|-------------|
+| `-DUNICODE -D_UNICODE` | Required by WinAPI (Wide versions) |
+| `-std=c++17` | C++ standard required by the library |
+| `-Wl,-subsystem,windows` | Build as Windows application (no console) |
+| `-static-libgcc -static-libstdc++ -static` | Static linking |
+| `-lgdi32 -lcomctl32` | Required Windows libraries |
+| Resource compilation `resources.rc` | Icon and other Windows resources |
 
-> **Nie deklaruj tych flag ręcznie w `platformio.ini`** — są dodawane automatycznie.
+> **Do not declare these flags manually in `platformio.ini`** — they are added automatically.
 
 ---
 
-## Kompatybilność z MinGW.org
+## MinGW.org Compatibility
 
-Biblioteka jest kompatybilna z **MinGW.org GCC 6.3.0** (model wątków win32), który jest domyślnym kompilatorem PlatformIO `platform = native`. Ograniczenia:
+The library is compatible with **MinGW.org GCC 6.3.0** (win32 thread model), which is the default PlatformIO `platform = native` compiler. Limitations:
 
-| Brak w MinGW.org | Zamiennik w bibliotece |
+| Missing in MinGW.org | Library replacement |
 |---|---|
 | `std::thread` | `CreateThread()` (WinAPI) |
-| `std::to_wstring()` | `jqb_compat::to_wstring()` (zdefiniowane w `Core.h`) |
+| `std::to_wstring()` | `jqb_compat::to_wstring()` (defined in `Core.h`) |
 | `swprintf_s()` | `_snwprintf()` |
 
-> W kodzie aplikacji używaj `CreateThread()` zamiast `std::thread` i `jqb_compat::to_wstring()` zamiast `std::to_wstring()`.
-> Zawsze używaj jawnych wersji Wide WinAPI: `CreateFontW()`, `CreateWindowExW()`, `MessageBoxW()` itp.
+> In application code, use `CreateThread()` instead of `std::thread` and `jqb_compat::to_wstring()` instead of `std::to_wstring()`.
+> Always use explicit Wide WinAPI versions: `CreateFontW()`, `CreateWindowExW()`, `MessageBoxW()` etc.
 
 ---
 
-## Model programowania (Arduino-like)
+## Programming Model (Arduino-like)
 
-Aplikacja definiuje **trzy funkcje** (wszystkie opcjonalne, `__weak`):
+The application defines **three functions** (all optional, `__weak`):
 
 ```cpp
-void init();    // Wywoływana w konstruktorze Core (przed WinMain)
-void setup();   // Wywoływana raz na początku WinMain — tworzenie GUI
-void loop();    // Wywoływana w każdym cyklu pętli komunikatów Windows
+void init();    // Called in Core constructor (before WinMain)
+void setup();   // Called once at the start of WinMain — create GUI
+void loop();    // Called in each message loop cycle
 ```
 
-### Globalny obiekt `_core`
+### Global `_core` Object
 
 ```cpp
 extern Core _core;
-// _core.hInstance  — HINSTANCE aplikacji (potrzebne do CreateWindow itp.)
-// _core.nCmdShow   — tryb wyświetlania okna
+// _core.hInstance  — application HINSTANCE (needed for CreateWindow etc.)
+// _core.nCmdShow   — window display mode
 ```
 
 ---
 
-## Struktura projektu
+## Project Structure
 
 ```
 src/
 ├── Core.h / .cpp          — WinMain, message loop, init/setup/loop, jqb_compat
 scripts/
-└── compile_resources.py   — auto-konfiguracja buildu (flagi, biblioteki, zasoby)
+└── compile_resources.py   — build auto-configuration (flags, libs, resources)
 ├── UI/
-│   ├── UIComponent.h      — abstrakcyjny interfejs (create, getId, getHandle)
-│   ├── SimpleWindow/       — okno główne (zarządza komponentami, WindowProc)
-│   ├── Button/             — przycisk (onClick + onLongClick ≥ 800ms)
-│   ├── Label/              — etykieta (wchar_t*, Unicode)
-│   ├── Select/             — ComboBox (onChange, link do wektora)
-│   ├── TextArea/           — edit multiline readonly (log/konsola)
-│   ├── InputField/         — edit jednoliniowy (placeholder, password, maxLen)
-│   ├── CheckBox/           — checkbox (onChange z bool)
-│   ├── ProgressBar/        — pasek postępu (0-100%, Marquee)
-│   ├── Chart/              — wykres czasu rzeczywistego (GDI, auto-scale)
-│   ├── ValueDisplay/       — wyświetlacz LCD (GDI, double-buffered)
-│   ├── ImageView/          — obrazy (GDI+, BMP/PNG/JPG, scale modes)
-│   └── TabControl/         — zakładki z panelami
+│   ├── UIComponent.h      — abstract interface (create, getId, getHandle)
+│   ├── SimpleWindow/       — main window (manages components, WindowProc) ⚠ singleton
+│   ├── OverlayWindow/      — overlay window (raw WinAPI, always-on-top, double-buffered GDI, context menu, ConfigManager persistence)
+│   ├── Button/             — button (onClick + onLongClick ≥ 800ms)
+│   ├── Label/              — label (wchar_t*, Unicode, setFont/setTextColor/setBackColor)
+│   ├── Select/             — ComboBox (onChange, link to vector)
+│   ├── TextArea/           — edit multiline readonly (log/console, setFont/setTextColor/setBackColor)
+│   ├── InputField/         — single-line edit (placeholder, password, maxLen)
+│   ├── CheckBox/           — checkbox (onChange with bool)
+│   ├── ProgressBar/        — progress bar (0-100%, Marquee, custom colors with theme bypass)
+│   ├── Chart/              — real-time chart (GDI, auto-scale, time-window)
+│   ├── ValueDisplay/       — LCD display (GDI, double-buffered, DisplayConfig)
+│   ├── ImageView/          — images (GDI+, BMP/PNG/JPG, scale modes)
+│   └── TabControl/         — tabs with panels
 ├── IO/
-│   ├── Serial/             — COM port (wątkowy odbiór, auto-reconnect)
-│   ├── BLE/                — Bluetooth LE (SetupAPI, overlapped I/O)
-│   └── HID/                — USB HID (Feature Reports, enumeracja urządzeń)
+│   ├── Serial/             — COM port (threaded receive, auto-reconnect)
+│   ├── BLE/                — Bluetooth LE (SetupAPI, GATT, overlapped I/O, scan/connect/notify/write)
+│   └── HID/                — USB HID (Feature Reports, device enumeration)
 └── Util/
     ├── StringUtils.*       — UTF-8 ↔ UTF-16 ↔ ANSI, extractComPort
-    └── ConfigManager.*     — zapis/odczyt key=value (INI-like)
+    ├── ConfigManager.*     — key=value save/load (INI-like, auto-save)
+    ├── DataLogger.*        — generic CSV logger with auto-timestamp
+    ├── HotkeyManager.*     — global keyboard shortcuts (WH_KEYBOARD_LL hook, dialog, config)
+    └── Statistics.h        — header-only MIN/MAX/AVG/PEAK statistics
 ```
 
 ---
 
-## Zakresy ID komponentów (auto-inkrementacja)
+## Component ID Ranges (auto-increment)
 
-| Klasa | Początek ID |
+| Class | Starting ID |
 |-------|-------------|
 | Button | 1000 |
 | Label | 2000 |
@@ -140,75 +146,166 @@ scripts/
 
 ---
 
-## Wzorce tworzenia komponentów UI
+## UI Component Creation Patterns
 
-### Ogólny wzorzec
+### General Pattern
 
 ```cpp
-KomponentUI* component = new KomponentUI(x, y, w, h, ...parametry...);
-window->add(component);  // create() wywoływane automatycznie
+UIComponent* component = new UIComponent(x, y, w, h, ...params...);
+window->add(component);  // create() called automatically
 ```
 
-### Okno + komponenty
+### Window + Components
 
 ```cpp
-SimpleWindow* window = new SimpleWindow(800, 600, "Tytuł", iconResId);
+SimpleWindow* window = new SimpleWindow(800, 600, "Title", iconResId);
 window->init();
 
-// Komponenty dodawane przez add() — LifeTime zarządzany przez okno
-window->add(new Label(x, y, w, h, L"Tekst"));
-window->add(new Button(x, y, w, h, "Tekst", [](Button* b) { ... }));
+// Window background color (optional)
+window->setBackgroundColor(RGB(30, 30, 38));
+
+// Menu bar (optional)
+HMENU menu = CreateMenu();
+window->setMenu(menu);
+window->onMenuCommand([](int cmdId) { /* routing */ });
+
+// Components added via add() — lifetime managed by window
+window->add(new Label(x, y, w, h, L"Text"));
+window->add(new Button(x, y, w, h, "Text", [](Button* b) { ... }));
 ```
 
-> `SimpleWindow` jest właścicielem komponentów — destruktor je zwalnia.
+> `SimpleWindow` owns all components — destructor frees them.
 
-### NIE usuwaj ręcznie komponentów dodanych do okna!
+### Do NOT manually delete components added to the window!
 
----
-
-## Konwencja encodingu tekstu
-
-| Komponent | Parametr | Encoding |
-|-----------|----------|----------|
-| **Label** | text | `const wchar_t*` (prefiks `L`) |
-| **Button**, **Select**, **InputField**, **CheckBox**, **TabControl** | text | `const char*` (UTF-8) |
-| **TextArea** | setText/append | Oba: `char*` (UTF-8) i `wchar_t*` (Unicode) |
-| **ValueDisplay** | updateValue, setMode | `std::wstring` |
-
-Konwersje: `StringUtils::utf8ToWide()` / `StringUtils::wideToUtf8()`
-
----
-
-## Wzorce callbacków
-
-### Button — kliknięcie i długie naciśnięcie
+### Label — Font and Color Styling
 
 ```cpp
-new Button(x, y, w, h, "Tekst",
-    [](Button* btn) { /* kliknięcie */ },
-    [](Button* btn) { /* długie naciśnięcie ≥ 800ms */ }
+Label* lbl = new Label(x, y, w, h, L"Text");
+window->add(lbl);  // FIRST add to window
+
+// Font
+lbl->setFont(L"Segoe UI", 14, true);           // fontName, size, bold
+lbl->setFont(L"Consolas", 12, false, true);     // fontName, size, bold, italic
+
+// Colors (handled automatically by WM_CTLCOLORSTATIC in SimpleWindow)
+lbl->setTextColor(RGB(0, 220, 80));             // Text color
+lbl->setBackColor(RGB(40, 40, 50));             // Background color
+```
+
+> Label colors require `WM_CTLCOLORSTATIC` handling — SimpleWindow does this automatically.
+
+### TextArea — Font and Color Styling
+
+```cpp
+TextArea* log = new TextArea(x, y, w, h);
+window->add(log);  // FIRST add to window
+
+// Font
+log->setFont(L"Consolas", 11, false);
+
+// Colors (handled by WM_CTLCOLORSTATIC in SimpleWindow — same as Label)
+log->setTextColor(RGB(170, 180, 195));
+log->setBackColor(RGB(22, 22, 28));
+```
+
+> Readonly EDIT controls (TextArea) send `WM_CTLCOLORSTATIC`, same as STATIC labels.
+
+### HotkeyManager — Shortcuts Dialog
+
+```cpp
+// Shortcut dialog — modal, managed by HotkeyManager
+hotkeyMgr->showSettingsDialog(window->getHandle());
+```
+
+> Dialog automatically displays shortcut list, handles key combo capture, "Restore Defaults" button, and saves to INI file.
+
+### OverlayWindow — Overlay Window (e.g. OBS)
+
+```cpp
+// Subclass with custom rendering
+class MeterOverlay : public OverlayWindow {
+public:
+    MeterOverlay()
+        : OverlayWindow(L"MyOverlay", L"My Overlay", 420, 160) {
+        enablePersistence(config, "overlay"); // auto-save/load position and style
+    }
+
+    void updateData(const std::wstring& text) {
+        m_text = text;
+        invalidate(); // request repaint
+    }
+
+protected:
+    void onPaint(HDC memDC, const RECT& rc) override {
+        // Double buffering + background handled by base — only draw content
+        SetTextColor(memDC, m_textColor);
+        DrawTextW(memDC, m_text.c_str(), -1, (LPRECT)&rc,
+                  DT_CENTER | DT_VCENTER | DT_SINGLELINE);
+    }
+
+private:
+    std::wstring m_text;
+};
+
+// Usage
+auto* overlay = new MeterOverlay();
+overlay->open();                          // WS_EX_TOOLWINDOW + WS_EX_TOPMOST
+overlay->setBackgroundColor(RGB(0,0,0));  // black background
+overlay->setTextColor(RGB(0,255,0));      // green text
+overlay->setAlwaysOnTop(false);           // disable always-on-top
+overlay->close();
+```
+
+> Right-click on overlay → built-in context menu (always-on-top, background/text chroma key colors, close).
+> Subclass can extend the menu via `onBuildContextMenu(HMENU)` + `onMenuCommand(int)`.
+> Base menu IDs: 9100–9149. Subclass IDs: 9150+.
+
+---
+
+## Text Encoding Convention
+
+| Component | Parameter | Encoding |
+|-----------|----------|----------|
+| **Label** | text | `const wchar_t*` (prefix `L`) |
+| **Button**, **Select**, **InputField**, **CheckBox**, **TabControl** | text | `const char*` (UTF-8) |
+| **TextArea** | setText/append | Both: `char*` (UTF-8) and `wchar_t*` (Unicode) |
+| **ValueDisplay** | updateValue, setMode | `std::wstring` |
+
+Conversions: `StringUtils::utf8ToWide()` / `StringUtils::wideToUtf8()`
+
+---
+
+## Callback Patterns
+
+### Button — Click and Long Press
+
+```cpp
+new Button(x, y, w, h, "Text",
+    [](Button* btn) { /* click */ },
+    [](Button* btn) { /* long press ≥ 800ms */ }
 );
 ```
 
-### Select — zmiana wyboru
+### Select — Selection Change
 
 ```cpp
-new Select(x, y, w, h, "Domyślny",
+new Select(x, y, w, h, "Default",
     [](Select* sel) {
-        const char* text = sel->getText();  // wybrany tekst
+        const char* text = sel->getText();  // selected text
     }
 );
 ```
 
-### CheckBox — zmiana stanu
+### CheckBox — State Change
 
 ```cpp
-new CheckBox(x, y, w, h, "Opcja", false,
+new CheckBox(x, y, w, h, "Option", false,
     [](CheckBox* cb, bool checked) { /* ... */ }
 );
 ```
 
-### InputField — zmiana tekstu
+### InputField — Text Change
 
 ```cpp
 new InputField(x, y, w, h, "",
@@ -216,7 +313,7 @@ new InputField(x, y, w, h, "",
 );
 ```
 
-### Serial — zdarzenia
+### Serial — Events
 
 ```cpp
 serial.onConnect([]() { /* ... */ });
@@ -224,7 +321,7 @@ serial.onDisconnect([]() { /* ... */ });
 serial.onReceive([](const std::vector<uint8_t>& data) { /* ... */ });
 ```
 
-### BLE — zdarzenia
+### BLE — Events
 
 ```cpp
 ble.onConnect([]() { /* ... */ });
@@ -235,119 +332,151 @@ ble.onScanComplete([]() { /* ... */ });
 ble.onError([](const std::wstring& msg) { /* ... */ });
 ```
 
+### BLE — Filtering and Prioritization
+
+```cpp
+// Scan with device name filter
+ble.startScan(BLEScanFilter(L"MyDevice"), 10);
+
+// Prioritization — matching devices appear first in the list
+ble.addPriorityFilter(L"owon");
+ble.addPriorityFilter(L"ow18b");
+ble.startScan(10);
+```
+
 ---
 
-## Komunikacja z urządzeniami
+## Device Communication
 
 ### Serial (COM)
 
 ```cpp
 Serial serial;
-serial.init();                       // Skanuje porty
-serial.setPort("COM3");              // Ustaw port
-serial.onReceive([](auto& data) {  // Callback odbioru
+serial.init();                       // Scans ports
+serial.setPort("COM3");              // Set port
+serial.onReceive([](auto& data) {  // Receive callback
     // data = std::vector<uint8_t>
 });
-serial.connect();                    // Otwiera port + wątek odczytu
-serial.write({0x55, 0xAA, 0x01});   // Wysyłanie
-serial.disconnect();                 // Zamknij
+serial.connect();                    // Opens port + read thread
+serial.write({0x55, 0xAA, 0x01});   // Send
+serial.disconnect();                 // Close
 ```
 
 ### BLE (Bluetooth Low Energy)
 
 ```cpp
 BLE ble;
-ble.init();                          // Sprawdza adapter BT
-ble.startScan(10);                   // Skanuj 10 sekund
+ble.init();                          // Check BT adapter, load BluetoothApis.dll
+
+// GATT configuration (service and characteristic UUIDs)
+ble.setServiceUUID(L"0000fff0-0000-1000-8000-00805f9b34fb");
+ble.setNotifyCharacteristicUUID(L"0000fff4-0000-1000-8000-00805f9b34fb");
+ble.setWriteCharacteristicUUID(L"0000fff3-0000-1000-8000-00805f9b34fb");
+
+ble.startScan(10);                   // Scan for 10 seconds
 ble.onScanComplete([&]() {
     auto& devices = ble.getDiscoveredDevices();
     if (!devices.empty()) {
-        ble.connect(devices[0].address);
+        ble.connect(devices[0].address);  // Automatic GATT setup
     }
 });
-ble.onReceive([](auto& data) { /* ... */ });
+ble.onReceive([](auto& data) { /* Data from GATT notify */ });
 ```
 
 ### HID (USB Human Interface Device)
 
 ```cpp
 HID hid;
-hid.init();                          // Ładuje hid.dll dynamicznie
-hid.setVidPid(0x1209, 0xC55D);       // VID/PID urządzenia
+hid.init();                          // Load hid.dll dynamically
+hid.setVidPid(0x1209, 0xC55D);       // Device VID/PID
 hid.setUsage(0xFF00, 0x01);          // Usage Page + Usage
-hid.setFeatureReportSize(7);         // Rozmiar danych Feature Report
-hid.findAndOpen();                   // Znajdź i otwórz urządzenie
+hid.setFeatureReportSize(7);         // Feature Report data size
+hid.findAndOpen();                   // Find and open device
 
 uint8_t buf[7];
-hid.getFeatureReport(2, buf, 7);     // Odczyt Feature Report
-hid.setFeatureReport(2, buf, 7);     // Zapis Feature Report
-hid.close();                         // Zamknij
+hid.getFeatureReport(2, buf, 7);     // Read Feature Report
+hid.setFeatureReport(2, buf, 7);     // Write Feature Report
+hid.close();                         // Close
 ```
 
 ---
 
-## Konfiguracja aplikacji
+## Application Configuration
 
 ```cpp
 ConfigManager config("settings.ini");
 
-// Zapis
+// Write
 config.setValue("port", "COM3");
 
-// Odczyt (z wartością domyślną)
+// Read (with default value)
 std::string port = config.getValue("port", "COM1");
 
-// Auto-save przy destrukcji obiektu
+// Auto-save on destructor
 ```
 
-Format pliku:
+File format:
 ```ini
-# Komentarz
+# Comment
 port=COM3
 baudrate=9600
 ```
 
 ---
 
-## Wskazówki dla Copilota
+## Copilot Guidelines
 
-1. **Zawsze używaj C++17** — standard dodawany automatycznie, nie deklaruj ręcznie
-2. **Główne trzy funkcje:** `init()`, `setup()`, `loop()` — definiowane globalnie, nie w klasie
-3. **Label przyjmuje `wchar_t*`** z prefiksem `L` — inne komponenty UTF-8 `char*`
-4. **Nie usuwaj komponentów dodanych do SimpleWindow** — okno zarządza ich pamięcią
-5. **Podaj `#include <Core.h>`** zawsze jako pierwszy include
-6. **Callbacki:** Używaj lambd `[capture](Typ* ptr) { ... }`
-7. **Nowe okno:** `new SimpleWindow(w, h, "title", 0); window->init();` — ZAWSZE `init()`!
-8. **Serial/BLE/HID:** Zawsze `init()` przed `connect()` / `startScan()` / `findAndOpen()` — init() ładuje DLL dynamicznie
-9. **Konwersja stringów:** `StringUtils::utf8ToWide()` / `wideToUtf8()`
-10. **Statyczny link:** Wynikowy `.exe` nie wymaga dodatkowych DLL (zależności systemowe ładowane dynamicznie)
-11. **Zasoby (ikona):** Plik `resources.rc` w katalogu głównym projektu, kompilowany automatycznie
-12. **TextArea jest readonly** — do pól edycyjnych użyj `InputField`
-13. **Chart** automatycznie usuwa stare dane i limituje FPS
-14. **ValueDisplay** obsługuje double-buffering i nie miga
-15. **TabControl::getTabPage()** zwraca HWND panelu — na nim umieszczaj kontrolki
-16. **Dynamiczne ładowanie DLL:** Moduły IO (Serial, BLE, HID) i ImageView ładują swoje DLL przez `LoadLibrary`/`GetProcAddress` w `init()`. Jedyne statycznie linkowane biblioteki to `gdi32` i `comctl32`.
-17. **MinGW.org compat:** Nie używaj `std::thread` (użyj `CreateThread`), `std::to_wstring` (użyj `jqb_compat::to_wstring`), `swprintf_s` (użyj `_snwprintf`).
-18. **WinAPI Wide:** Zawsze używaj jawnych wersji `W`: `CreateFontW()`, `CreateWindowExW()`, `MessageBoxW()`.
+1. **Always use C++17** — standard added automatically, do not declare manually
+2. **Three main functions:** `init()`, `setup()`, `loop()` — defined globally, not in a class
+3. **Label takes `wchar_t*`** with `L` prefix — other components use UTF-8 `char*`
+4. **Label.setFont/setTextColor/setBackColor** — font and color styling (colors handled by SimpleWindow WM_CTLCOLORSTATIC)
+5. **TextArea.setFont/setTextColor/setBackColor** — same styling API as Label, also uses WM_CTLCOLORSTATIC
+6. **SimpleWindow.setBackgroundColor()** — changes window background (WM_ERASEBKGND)
+7. **SimpleWindow.setMenu(HMENU)** + **onMenuCommand(callback)** — menu bar support
+8. **SimpleWindow is a singleton** (`s_instance`) — do not create a second one! For additional windows use `OverlayWindow` or raw WinAPI with `GWLP_USERDATA`
+9. **HotkeyManager.showSettingsDialog(HWND)** — built-in keyboard shortcuts dialog
+10. **Do not delete components added to SimpleWindow** — window manages their memory
+11. **Include `<Core.h>`** always as the first include
+12. **Callbacks:** Use lambdas `[capture](Type* ptr) { ... }`
+13. **New window:** `new SimpleWindow(w, h, "title", 0); window->init();` — ALWAYS call `init()`!
+14. **Serial/BLE/HID:** Always `init()` before `connect()` / `startScan()` / `findAndOpen()` — init() loads DLLs dynamically
+15. **String conversion:** `StringUtils::utf8ToWide()` / `wideToUtf8()`
+16. **Static linking:** Resulting `.exe` needs no extra DLLs (system dependencies loaded dynamically)
+17. **Resources (icon):** `resources.rc` in project root, compiled automatically
+18. **TextArea is readonly** — for editable fields use `InputField`
+19. **Chart** automatically removes old data and limits FPS (`setTimeWindow()`, `setRefreshRate()`)
+20. **ValueDisplay** supports double-buffering, `DisplayConfig` (colors, fonts, proportions), custom `ValueFormatter`
+21. **TabControl::getTabPage()** returns panel HWND — place child controls on it
+22. **Dynamic DLL loading:** IO modules (Serial, BLE, HID) and ImageView load their DLLs via `LoadLibrary`/`GetProcAddress` in `init()`. Only `gdi32` and `comctl32` are statically linked.
+23. **MinGW.org compat:** Do not use `std::thread` (use `CreateThread`), `std::to_wstring` (use `jqb_compat::to_wstring`), `swprintf_s` (use `_snwprintf`).
+24. **WinAPI Wide:** Always use explicit `W` versions: `CreateFontW()`, `CreateWindowExW()`, `MessageBoxW()`.
+25. **Statistics** — header-only (`Util/Statistics.h`), `addSample()` / `reset()`, fields `min/max/peak/sum/count`
+26. **DataLogger** — CSV with auto-timestamp filename, `startRecording(headers)` / `addRow(columns)` / `stopRecording()`
+27. **HotkeyManager** — global `WH_KEYBOARD_LL` hook, `addHotkey(iniKey, label, default, action)`, `loadFromConfig()`, `installHook()`, built-in `showSettingsDialog(HWND)`
+28. **ConfigManager** — INI key=value, auto-save on destructor, `setValue()` / `getValue(key, default)`
+29. **LoadCursorW with IDC_ARROW** — in MinGW requires cast: `LoadCursorW(NULL, (LPCWSTR)IDC_ARROW)`
+30. **Control IDs 1000-8999** (auto), **Menu IDs 9000+** (manual), **Context menu IDs 9100+** — prevents collisions
+31. **OverlayWindow** — base overlay window class with `virtual onPaint()`, double-buffered GDI, always-on-top, context menu (chroma key colors), `enablePersistence(config, prefix)` for auto-save/load position and style
+32. **ProgressBar custom colors** — `setColor()` / `setBackColor()` automatically disable visual styles on the control (via `uxtheme.dll` → `SetWindowTheme`) to ensure `PBM_SETBARCOLOR` works with Common Controls v6
 
-### Typowy layout aplikacji
+### Typical Application Layout
 
 ```
 ┌──────────────────────────────────────┐
-│ Tytuł okna                     [_][□][X] │
+│ Window Title                   [_][□][X] │
 ├──────────────────────────────────────┤
 │ Label: "Status"                      │
-│ [Select ▼ COM3] [Połącz] [Rozłącz]  │
+│ [Select ▼ COM3] [Connect] [Disconnect] │
 │ ┌──────────────────────────────────┐ │
-│ │ TextArea (log/konsola)           │ │
-│ │ > Odebrano: 55 AA 01 ...        │ │
-│ │ > Wysłano: 55 AA 02 ...         │ │
+│ │ TextArea (log/console)           │ │
+│ │ > Received: 55 AA 01 ...        │ │
+│ │ > Sent: 55 AA 02 ...            │ │
 │ └──────────────────────────────────┘ │
-│ [Wyślij] [Wyczyść]                   │
+│ [Send] [Clear]                       │
 └──────────────────────────────────────┘
 ```
 
-### Minimalny `platformio.ini`
+### Minimal `platformio.ini`
 
 ```ini
 [env:app]
@@ -356,9 +485,9 @@ lib_deps =
     https://github.com/JAQUBA/JQB_WindowsLib.git
 ```
 
-> Flagi C++17, UNICODE, statyczne linkowanie i biblioteki są dodawane automatycznie przez `compile_resources.py`.
+> C++17, UNICODE, static linking, and library flags are added automatically by `compile_resources.py`.
 
-### Minimalny `main.cpp`
+### Minimal `main.cpp`
 
 ```cpp
 #include <Core.h>
@@ -370,8 +499,153 @@ SimpleWindow* window;
 void setup() {
     window = new SimpleWindow(400, 300, "Hello JQB", 0);
     window->init();
-    window->add(new Label(20, 20, 360, 30, L"Witaj!"));
+    window->add(new Label(20, 20, 360, 30, L"Hello!"));
 }
 
 void loop() {}
 ```
+
+---
+
+## Architecture Limitations
+
+### SimpleWindow — Singleton
+
+`SimpleWindow` uses a static field `s_instance` for `WindowProc` routing — only **one main window** per process. Creating a second `SimpleWindow` will overwrite the pointer and break the first window.
+
+**Additional windows** should be created via raw WinAPI (`GWLP_USERDATA` pattern) or `OverlayWindow` subclass:
+
+```cpp
+class MyOverlay : public OverlayWindow {
+public:
+    MyOverlay()
+        : OverlayWindow(L"MyOverlay", L"My Overlay", 420, 160) {}
+
+protected:
+    void onPaint(HDC memDC, const RECT& rc) override {
+        // Custom GDI rendering
+    }
+};
+```
+
+### Modal Dialogs
+
+Pattern for blocking the main window:
+```cpp
+EnableWindow(parentHwnd, FALSE);   // Block parent
+// ... CreateWindowExW with WS_EX_DLGMODALFRAME ...
+// In WM_DESTROY:
+EnableWindow(parentHwnd, TRUE);    // Unblock parent
+```
+
+See: `HotkeyManager::showSettingsDialog()` — keyboard shortcuts dialog.
+
+---
+
+## Util Tools — Full Documentation
+
+### Statistics (header-only)
+
+```cpp
+#include <Util/Statistics.h>
+
+Statistics stats;
+stats.addSample(3.14);
+stats.addSample(-1.5);
+// stats.min = -1.5, stats.max = 3.14, stats.getAvg() = 0.82, stats.peak = 3.14
+stats.reset();
+```
+
+Ignores `NaN` and `Inf`. Field `hasData` indicates whether samples were added. Field `count` → sample count.
+
+### DataLogger (CSV)
+
+```cpp
+#include <Util/DataLogger.h>
+
+DataLogger logger("measurements");  // File prefix
+logger.startRecording({"Value", "Unit", "Mode"});  // CSV headers
+logger.addRow({"3.14", "V", "DC V"});               // Data row
+logger.getSampleCount();                             // Row count
+logger.getElapsedSeconds();                          // Recording duration
+logger.stopRecording();
+// File: measurements_2026-03-05_14-30-45.csv
+```
+
+Auto-timestamp in filename. `isRecording()` to check state.
+
+### HotkeyManager (Keyboard Shortcuts)
+
+```cpp
+#include <Util/HotkeyManager.h>
+#include <Util/ConfigManager.h>
+
+ConfigManager config("app.ini");
+HotkeyManager* hkMgr = new HotkeyManager(config);
+
+// Register shortcuts (iniKey, label, defaultBind, action)
+hkMgr->addHotkey("shortcut_save", "Save", "Ctrl+S", []() { doSave(); });
+hkMgr->addHotkey("shortcut_quit", "Quit", "Ctrl+Q", []() { doQuit(); });
+
+hkMgr->loadFromConfig();   // Load bindings from INI
+hkMgr->installHook();      // Install global WH_KEYBOARD_LL hook
+// ...
+hkMgr->showSettingsDialog(parentHwnd);  // Modal shortcut editing dialog
+```
+
+Dialog automatically handles: shortcut list, key combo capture, restore defaults, save to INI.
+
+---
+
+## BLE Sensor Application Pattern
+
+A typical BLE sensor application uses a data pipeline:
+
+```
+BLE.onReceive() → parse() → ValueDisplay + Chart + Statistics + DataLogger + Log
+```
+
+### Pipeline Fan-out (Multi-consumer)
+
+```cpp
+void handleSensorData(const std::vector<uint8_t>& data) {
+    // 1. Parse (device protocol specific)
+    auto measurement = MyParser::parse(data);
+    if (!measurement.valid) return;
+
+    // 2. LCD display
+    valueDisplay->updateValue(measurement.value, measurement.prefix, measurement.unit);
+    valueDisplay->setMode(measurement.modeStr);
+
+    // 3. Real-time chart
+    if (chartEnabled)
+        chart->addDataPoint(measurement.value, measurement.unit);
+
+    // 4. Statistics
+    stats.addSample(measurement.value);
+    updateStatsLabel();
+
+    // 5. CSV recording
+    if (dataLogger.isRecording())
+        dataLogger.addRow({valueStr, unitStr, modeStr});
+
+    // 6. Text log
+    logMsg(formatMessage(measurement));
+}
+```
+
+### Menu — ID Range Pattern
+
+UI controls have auto-IDs in range 1000-8999. Define menu commands in range **9000+** to avoid collisions:
+
+```cpp
+// MenuHandler.h
+#define IDM_FILE_SAVE      9001
+#define IDM_FILE_EXIT      9002
+#define IDM_CONN_SCAN      9010
+#define IDM_CONN_CONNECT   9011
+// Overlay/separate window context menu IDs: 9100+
+#define IDM_OVL_CLOSE      9100
+```
+
+Routing via `switch(cmdId)` in `window->onMenuCommand(...)` callback.

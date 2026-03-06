@@ -20,6 +20,15 @@ public:
     void append(const std::wstring& text);
     void clear();
 
+    // Stylizacja
+    void setFont(const wchar_t* fontName, int size, bool bold = false);
+    void setTextColor(COLORREF color);
+    void setBackColor(COLORREF color);
+    bool hasCustomColors() const { return m_hasCustomColors; }
+    COLORREF getTextColor() const { return m_textColor; }
+    COLORREF getBackColor() const { return m_backColor; }
+    HBRUSH getBackBrush() const { return m_hBackBrush; }
+
     // Gettery
     int getX() const { return m_x; }
     int getY() const { return m_y; }
@@ -43,6 +52,13 @@ private:
     HWND m_hwnd;
     int m_id;
     static int s_nextId;
+
+    // Stylizacja
+    COLORREF m_textColor    = CLR_INVALID;
+    COLORREF m_backColor    = CLR_INVALID;
+    HBRUSH   m_hBackBrush   = NULL;
+    HFONT    m_hFont        = NULL;
+    bool     m_hasCustomColors = false;
 };
 
 #endif // TEXT_AREA_H

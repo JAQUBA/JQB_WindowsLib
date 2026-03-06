@@ -25,6 +25,18 @@ public:
     void handleClick() override;
     void handleLongClick();
 
+    // Custom styling (owner-draw)
+    void setBackColor(COLORREF color);
+    void setTextColor(COLORREF color);
+    void setHoverColor(COLORREF color);
+    void setFont(const wchar_t* fontName, int size, bool bold = false);
+    bool hasCustomColors() const { return m_hasCustomColors; }
+    COLORREF getBackColor() const { return m_backColor; }
+    COLORREF getTextColor() const { return m_textColor; }
+    COLORREF getHoverColor() const { return m_hoverColor; }
+    bool isHovered() const { return m_isHovered; }
+    void drawOwnerDraw(DRAWITEMSTRUCT* dis);
+
     // Gettery
     int getX() const { return m_x; }
     int getY() const { return m_y; }
@@ -52,6 +64,14 @@ private:
     static int s_nextId;
     std::function<void(Button*)> m_onClick;
     std::function<void(Button*)> m_onLongClick;
+
+    // Owner-draw styling
+    COLORREF m_backColor  = CLR_INVALID;
+    COLORREF m_textColor  = CLR_INVALID;
+    COLORREF m_hoverColor = CLR_INVALID;
+    HFONT    m_hFont      = NULL;
+    bool     m_hasCustomColors = false;
+    bool     m_isHovered       = false;
 };
 
 #endif // BUTTON_H

@@ -1,65 +1,65 @@
 # HID — USB HID Communication
 
-Klasa `HID` zapewnia komunikację z urządzeniami USB HID przez **Feature Reports**.  
-Dynamicznie ładuje `hid.dll` — nie wymaga linkowania statycznego biblioteki HID.
+The `HID` class provides communication with USB HID devices via **Feature Reports**.  
+Dynamically loads `hid.dll` — no static linking of the HID library required.
 
 **Include:** `#include <IO/HID/HID.h>`
 
 ---
 
-## Klasa `HID`
+## Class `HID`
 
-### Konstruktor
+### Constructor
 
 ```cpp
-HID hid;   // domyślny — brak konfiguracji
+HID hid;   // default — no configuration
 ```
 
-### Konfiguracja (przed `findAndOpen()`)
+### Configuration (before `findAndOpen()`)
 
-| Metoda | Opis |
-|--------|------|
-| `setVidPid(uint16_t vid, uint16_t pid)` | VID/PID urządzenia docelowego |
-| `setUsage(uint16_t usagePage, uint16_t usage)` | Usage Page i Usage do filtrowania interfejsu |
-| `setFeatureReportSize(size_t dataBytes)` | Rozmiar danych Feature Report w bajtach (bez Report ID). Domyślnie: **7** |
+| Method | Description |
+|--------|-------------|
+| `setVidPid(uint16_t vid, uint16_t pid)` | Target device VID/PID |
+| `setUsage(uint16_t usagePage, uint16_t usage)` | Usage Page and Usage for interface filtering |
+| `setFeatureReportSize(size_t dataBytes)` | Feature Report data size in bytes (excluding Report ID). Default: **7** |
 
-### Cykl życia
+### Lifecycle
 
 ```
 HID hid;
-hid.init();                              // ładuje hid.dll
+hid.init();                              // loads hid.dll
 hid.setVidPid(0x1209, 0xC55D);          // VID/PID
 hid.setUsage(0xFF00, 0x01);             // Vendor Usage Page
-hid.setFeatureReportSize(7);            // 7 bajtów danych
+hid.setFeatureReportSize(7);            // 7 data bytes
 if (hid.findAndOpen()) {
-    // komunikacja...
+    // communication...
     hid.close();
 }
 ```
 
 ---
 
-## Metody
+## Methods
 
 ### `bool init()`
 
-Ładuje `hid.dll` i rozwiązuje wskaźniki funkcji. Musi być wywołane raz przed innymi metodami.
+Loads `hid.dll` and resolves function pointers. Must be called once before other methods.
 
-**Zwraca:** `true` jeśli hid.dll załadowane poprawnie.
+**Returns:** `true` if hid.dll loaded successfully.
 
 ---
 
 ### `bool findAndOpen()`
 
-Enumeruje urządzenia HID (przez SetupDI) i otwiera **pierwsze** pasujące do ustawionych VID/PID i Usage.
+Enumerates HID devices (via SetupDI) and opens the **first** one matching the configured VID/PID and Usage.
 
-**Zwraca:** `true` jeśli urządzenie znalezione i otwarte.
+**Returns:** `true` if device found and opened.
 
 ---
 
 ### `std::vector<HIDDevice> scan()`
 
-Zwraca listę wszystkich urządzeń HID pasujących do VID/PID i Usage **bez otwierania** ich.
+Returns a list of all HID devices matching VID/PID and Usage **without opening** them.
 
 ```cpp
 auto devices = hid.scan();
@@ -72,7 +72,7 @@ for (auto& dev : devices) {
 
 ### `bool open(const std::string& devicePath)`
 
-Otwiera konkretne urządzenie po ścieżce (z `HIDDevice::path`).
+Opens a specific device by path (from `HIDDevice::path`).
 
 ```cpp
 auto devices = hid.scan();
@@ -85,55 +85,55 @@ if (!devices.empty()) {
 
 ### `void close()`
 
-Zamyka uchwyt urządzenia. Wywołuje callback `onDisconnect`.
+Closes the device handle. Invokes `onDisconnect` callback.
 
 ---
 
 ### `bool isOpen() const`
 
-Czy urządzenie jest otwarte.
+Whether a device is currently open.
 
 ---
 
 ### `bool getFeatureReport(uint8_t reportId, uint8_t* data, size_t dataLen)`
 
-Odczytuje Feature Report z urządzenia.
+Reads a Feature Report from the device.
 
-| Parametr | Opis |
-|----------|------|
+| Parameter | Description |
+|-----------|-------------|
 | `reportId` | HID Report ID |
-| `data` | Bufor wyjściowy (minimum `dataLen` bajtów) |
-| `dataLen` | Liczba bajtów danych do odczytania |
+| `data` | Output buffer (minimum `dataLen` bytes) |
+| `dataLen` | Number of data bytes to read |
 
-**Zwraca:** `true` przy sukcesie.
+**Returns:** `true` on success.
 
 ---
 
 ### `bool setFeatureReport(uint8_t reportId, const uint8_t* data, size_t dataLen)`
 
-Wysyła Feature Report do urządzenia.
+Sends a Feature Report to the device.
 
-| Parametr | Opis |
-|----------|------|
+| Parameter | Description |
+|-----------|-------------|
 | `reportId` | HID Report ID |
-| `data` | Dane do wysłania |
-| `dataLen` | Liczba bajtów danych |
+| `data` | Data to send |
+| `dataLen` | Number of data bytes |
 
-**Zwraca:** `true` przy sukcesie.
+**Returns:** `true` on success.
 
 ---
 
-## Callbacki
+## Callbacks
 
-| Metoda | Sygnatura | Kiedy |
-|--------|-----------|-------|
-| `onConnect(cb)` | `void()` | Po pomyślnym otwarciu urządzenia |
-| `onDisconnect(cb)` | `void()` | Po zamknięciu urządzenia |
-| `onError(cb)` | `void(const std::string&)` | Przy błędzie (ładowanie dll, komunikacja) |
+| Method | Signature | When |
+|--------|-----------|------|
+| `onConnect(cb)` | `void()` | After successful device open |
+| `onDisconnect(cb)` | `void()` | After device close |
+| `onError(cb)` | `void(const std::string&)` | On error (dll loading, communication) |
 
 ```cpp
 hid.onConnect([]() {
-    // urządzenie otwarte
+    // device opened
 });
 
 hid.onError([](const std::string& msg) {
@@ -145,22 +145,22 @@ hid.onError([](const std::string& msg) {
 
 ## Struct `HIDDevice`
 
-Informacje o znalezionym urządzeniu (zwracane przez `scan()`):
+Information about a found device (returned by `scan()`):
 
-| Pole | Typ | Opis |
-|------|-----|------|
+| Field | Type | Description |
+|-------|------|-------------|
 | `vendorId` | `uint16_t` | VID |
 | `productId` | `uint16_t` | PID |
-| `versionNumber` | `uint16_t` | Numer wersji urządzenia |
+| `versionNumber` | `uint16_t` | Device version number |
 | `usagePage` | `uint16_t` | HID Usage Page |
 | `usage` | `uint16_t` | HID Usage |
-| `path` | `std::string` | Ścieżka interfejsu (do `open()`) |
+| `path` | `std::string` | Interface path (for `open()`) |
 
-Metoda `toString()` zwraca opis w formie: `"HID 1209:C55D  UsagePage=0xFF00 Usage=0x0001"`
+Method `toString()` returns a description: `"HID 1209:C55D  UsagePage=0xFF00 Usage=0x0001"`
 
 ---
 
-## Kompletny przykład
+## Complete Example
 
 ```cpp
 #include <Core.h>
@@ -184,7 +184,7 @@ void setup() {
     window = new SimpleWindow(400, 200, "HID Demo", 0);
     window->init();
 
-    lblStatus = new Label(20, 20, 360, 25, L"Rozłączony");
+    lblStatus = new Label(20, 20, 360, 25, L"Disconnected");
     window->add(lblStatus);
 
     hid.init();
@@ -193,18 +193,18 @@ void setup() {
     hid.setFeatureReportSize(REPORT_SIZE);
 
     hid.onConnect([]() {
-        lblStatus->setText(L"Połączony!");
+        lblStatus->setText(L"Connected!");
     });
 
     hid.onDisconnect([]() {
-        lblStatus->setText(L"Rozłączony");
+        lblStatus->setText(L"Disconnected");
     });
 
     hid.onError([](const std::string& msg) {
-        // obsługa błędów
+        // error handling
     });
 
-    window->add(new Button(20, 60, 120, 30, "Połącz", [](Button*) {
+    window->add(new Button(20, 60, 120, 30, "Connect", [](Button*) {
         if (hid.isOpen()) {
             hid.close();
         } else {
@@ -212,11 +212,11 @@ void setup() {
         }
     }));
 
-    window->add(new Button(150, 60, 120, 30, "Odczytaj", [](Button*) {
+    window->add(new Button(150, 60, 120, 30, "Read", [](Button*) {
         if (!hid.isOpen()) return;
         uint8_t data[REPORT_SIZE];
         if (hid.getFeatureReport(REPORT_ID_CFG, data, REPORT_SIZE)) {
-            // przetwarzanie danych...
+            // process data...
         }
     }));
 }
@@ -226,10 +226,10 @@ void loop() {}
 
 ---
 
-## Uwagi techniczne
+## Technical Notes
 
-- **hid.dll** jest ładowane dynamicznie (`LoadLibrary`) — nie wymaga `-lhid` w linkowania
-- **setupapi** jest wymagane (linkowane automatycznie przez bibliotekę)
-- Urządzenie otwierane jest z `FILE_SHARE_READ | FILE_SHARE_WRITE` (współdzielony dostęp — klawiatury są urządzeniami systemowymi)
-- `setVidPid(0, 0)` + `setUsage(0, 0)` = brak filtra — `scan()` zwróci **wszystkie** urządzenia HID
-- Feature Report buffer = `[ReportID][data...]` — klasa automatycznie dodaje/usuwa bajt Report ID
+- **hid.dll** is loaded dynamically (`LoadLibrary`) — does not require `-lhid` in linking
+- **setupapi** is required (linked automatically by the library)
+- Device is opened with `FILE_SHARE_READ | FILE_SHARE_WRITE` (shared access — keyboards are system devices)
+- `setVidPid(0, 0)` + `setUsage(0, 0)` = no filter — `scan()` will return **all** HID devices
+- Feature Report buffer = `[ReportID][data...]` — the class automatically adds/removes the Report ID byte

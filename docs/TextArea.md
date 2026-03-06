@@ -1,42 +1,58 @@
-# TextArea — Wieloliniowe pole tekstowe
+# TextArea — Multiline Text Field
 
 > `#include <UI/TextArea/TextArea.h>`
 
-## Opis
+## Description
 
-Wieloliniowe pole tekstowe, domyślnie **tylko do odczytu** (`ES_READONLY`). Idealne jako log komunikacji, konsola wyjściowa lub wyświetlacz danych.
+Multiline text field, **readonly** by default (`ES_READONLY`). Ideal as a communication log, output console, or data display. Supports font and color styling.
 
-## Konstruktor
+## Constructor
 
 ```cpp
 TextArea(int x, int y, int width, int height);
 ```
 
-| Parametr | Typ | Opis |
-|----------|-----|------|
-| `x`, `y` | `int` | Pozycja |
-| `width`, `height` | `int` | Rozmiar |
+| Parameter | Type | Description |
+|-----------|------|-------------|
+| `x`, `y` | `int` | Position |
+| `width`, `height` | `int` | Size |
 
-## Metody
+## Methods
 
-| Metoda | Zwraca | Opis |
-|--------|--------|------|
-| `create(HWND parent)` | `void` | Tworzy kontrolkę EDIT (multiline, readonly) |
-| `setText(const char* text)` | `void` | Ustawia tekst (UTF-8) |
-| `setText(const std::string& text)` | `void` | Ustawia tekst (UTF-8 string) |
-| `setText(const wchar_t* text)` | `void` | Ustawia tekst (Unicode) |
-| `setText(const std::wstring& text)` | `void` | Ustawia tekst (Unicode wstring) |
-| `append(const std::string& text)` | `void` | Dopisuje tekst na końcu (UTF-8) |
-| `append(const std::wstring& text)` | `void` | Dopisuje tekst na końcu (Unicode) |
-| `clear()` | `void` | Czyści zawartość |
-| `getText()` | `const wchar_t*` | Pobiera tekst (Unicode) |
-| `getTextUTF8()` | `std::string` | Pobiera tekst jako UTF-8 |
-| `getHandle()` | `HWND` | Uchwyt kontrolki |
-| `getId()` | `int` | Unikalny ID (auto od 4000) |
+### Text Operations
 
-## Przykłady
+| Method | Returns | Description |
+|--------|---------|-------------|
+| `create(HWND parent)` | `void` | Creates the EDIT control (multiline, readonly) |
+| `setText(const char* text)` | `void` | Sets text (UTF-8) |
+| `setText(const std::string& text)` | `void` | Sets text (UTF-8 string) |
+| `setText(const wchar_t* text)` | `void` | Sets text (Unicode) |
+| `setText(const std::wstring& text)` | `void` | Sets text (Unicode wstring) |
+| `append(const std::string& text)` | `void` | Appends text (UTF-8) |
+| `append(const std::wstring& text)` | `void` | Appends text (Unicode) |
+| `clear()` | `void` | Clears content |
+| `getText()` | `const wchar_t*` | Gets text (Unicode) |
+| `getTextUTF8()` | `std::string` | Gets text as UTF-8 |
+| `getHandle()` | `HWND` | Control handle |
+| `getId()` | `int` | Unique ID (auto from 4000) |
 
-### Log komunikacji Serial
+### Font and Color Styling
+
+| Method | Returns | Description |
+|--------|---------|-------------|
+| `setFont(const wchar_t* fontName, int size, bool bold = false, bool italic = false)` | `void` | Sets font (name, size, bold, italic) |
+| `setTextColor(COLORREF color)` | `void` | Sets text color |
+| `setBackColor(COLORREF color)` | `void` | Sets background color |
+| `hasCustomColors()` | `bool` | Whether custom colors are set |
+| `getTextColor()` | `COLORREF` | Current text color |
+| `getBackColor()` | `COLORREF` | Current background color |
+| `getBackBrush()` | `HBRUSH` | Background brush (used by SimpleWindow) |
+
+> **Note:** Colors are applied via `WM_CTLCOLORSTATIC` handled automatically by `SimpleWindow`. The TextArea must be added to the window (`window->add()`) before setting colors.
+
+## Examples
+
+### Communication Log
 
 ```cpp
 TextArea* logArea = new TextArea(20, 80, 560, 300);
@@ -48,28 +64,43 @@ serial.onReceive([logArea](const std::vector<uint8_t>& data) {
 });
 ```
 
-### Wyświetlacz z auto-scrollem
+### Styled Log with Dark Theme
+
+```cpp
+TextArea* log = new TextArea(20, 80, 560, 300);
+window->add(log);
+
+log->setFont(L"Consolas", 11, false);
+log->setTextColor(RGB(170, 180, 195));
+log->setBackColor(RGB(22, 22, 28));
+
+log->append(L"Application started\r\n");
+log->append(L"> Waiting for data...\r\n");
+```
+
+### Display with Auto-scroll
 
 ```cpp
 TextArea* ta = new TextArea(10, 10, 400, 200);
 window->add(ta);
 
-ta->append("Linia 1\r\n");
-ta->append("Linia 2\r\n");
-ta->append("Linia 3\r\n");  // automatyczny scroll do dołu
+ta->append("Line 1\r\n");
+ta->append("Line 2\r\n");
+ta->append("Line 3\r\n");  // auto-scrolls to bottom
 ```
 
-### Ustawianie całego tekstu
+### Setting Full Text
 
 ```cpp
-ta->setText("Nowa zawartość\r\nDruga linia");
-ta->clear();  // Czyści wszystko
+ta->setText("New content\r\nSecond line");
+ta->clear();  // Clears everything
 ```
 
-## Uwagi
+## Notes
 
-- **Styl:** `ES_MULTILINE | ES_AUTOVSCROLL | WS_VSCROLL | ES_READONLY`
-- Nowe linie: używaj `\r\n` (Windows convention)
-- `append()` automatycznie przewija do końca (`SB_BOTTOM`)
-- Kodowanie: wewnętrznie Unicode (`std::wstring`). Metody `setText/append` z `const char*` / `std::string` konwertują z UTF-8
-- ID zaczynają się od **4000**
+- **Style:** `ES_MULTILINE | ES_AUTOVSCROLL | WS_VSCROLL | ES_READONLY`
+- Newlines: use `\r\n` (Windows convention)
+- `append()` auto-scrolls to bottom (`SB_BOTTOM`)
+- Encoding: internally Unicode (`std::wstring`). Methods with `const char*` / `std::string` convert from UTF-8
+- IDs start at **4000**
+- Font and color styling uses the same mechanism as `Label` — colors handled by `WM_CTLCOLORSTATIC` in `SimpleWindow`

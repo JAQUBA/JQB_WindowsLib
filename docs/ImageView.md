@@ -1,94 +1,94 @@
-# ImageView — Wyświetlanie obrazów
+# ImageView — Image Display
 
 > `#include <UI/ImageView/ImageView.h>`
 
-## Opis
+## Description
 
-Kontrolka do wyświetlania obrazów z obsługą:
-- Wczytywanie z pliku (BMP, PNG, JPG, GIF — przez GDI+)
-- Wczytywanie z zasobów (`.rc`)
-- Wczytywanie z pamięci (bufor bajtów)
-- Tryby skalowania (dopasuj, rozciągnij, wyśrodkuj, oryginalny rozmiar)
+Image display control with support for:
+- Loading from file (BMP, PNG, JPG, GIF — via GDI+)
+- Loading from resources (`.rc`)
+- Loading from memory (byte buffer)
+- Scale modes (fit, stretch, center, original size)
 
-## Konstruktor
+## Constructor
 
 ```cpp
 ImageView(int x, int y, int width, int height);
 ```
 
-## Tryby skalowania (`ScaleMode`)
+## Scale Modes (`ScaleMode`)
 
 ```cpp
 enum ScaleMode {
-    ACTUAL_SIZE,   // Oryginalny rozmiar — wyśrodkowany
-    STRETCH,       // Rozciągnięty do rozmiaru kontrolki
-    ASPECT_FIT,    // Zachowuje proporcje, dopasowany do kontrolki (domyślny)
-    CENTER         // Wyśrodkowany, przycinany jeśli za duży
+    ACTUAL_SIZE,   // Original size — centered
+    STRETCH,       // Stretched to control size
+    ASPECT_FIT,    // Preserves aspect ratio, fits control (default)
+    CENTER         // Centered, cropped if too large
 };
 ```
 
-## Metody
+## Methods
 
-| Metoda | Zwraca | Opis |
-|--------|--------|------|
-| `create(HWND parent)` | `void` | Tworzy kontrolkę obrazu |
-| `loadFromFile(const char* path)` | `bool` | Wczytuje z pliku (UTF-8, GDI+) |
-| `loadFromResource(int id)` | `bool` | Wczytuje z zasobów |
-| `loadFromMemory(const void* data, size_t size)` | `bool` | Wczytuje z bufora |
-| `clear()` | `void` | Usuwa obraz |
-| `setScaleMode(ScaleMode mode)` | `void` | Tryb skalowania |
-| `setBorderStyle(bool hasBorder)` | `void` | Ramka wokół kontrolki |
-| `setBackgroundColor(COLORREF color)` | `void` | Kolor tła |
-| `hasImage()` | `bool` | Czy obraz jest załadowany |
-| `getImageWidth()` | `int` | Szerokość oryginału |
-| `getImageHeight()` | `int` | Wysokość oryginału |
-| `getHandle()` | `HWND` | Uchwyt kontrolki |
-| `getId()` | `int` | Unikalny ID (auto od 8000) |
+| Method | Returns | Description |
+|--------|---------|-------------|
+| `create(HWND parent)` | `void` | Creates the image control |
+| `loadFromFile(const char* path)` | `bool` | Loads from file (UTF-8, GDI+) |
+| `loadFromResource(int id)` | `bool` | Loads from resources |
+| `loadFromMemory(const void* data, size_t size)` | `bool` | Loads from buffer |
+| `clear()` | `void` | Removes image |
+| `setScaleMode(ScaleMode mode)` | `void` | Scale mode |
+| `setBorderStyle(bool hasBorder)` | `void` | Border around control |
+| `setBackgroundColor(COLORREF color)` | `void` | Background color |
+| `hasImage()` | `bool` | Whether an image is loaded |
+| `getImageWidth()` | `int` | Original image width |
+| `getImageHeight()` | `int` | Original image height |
+| `getHandle()` | `HWND` | Control handle |
+| `getId()` | `int` | Unique ID (auto from 8000) |
 
-## Przykłady
+## Examples
 
-### Obraz z pliku
+### Image from File
 
 ```cpp
 ImageView* img = new ImageView(20, 20, 200, 200);
 window->add(img);
 
 img->loadFromFile("photo.png");              // PNG
-img->loadFromFile("C:\\images\\logo.jpg");    // JPG z pełną ścieżką
+img->loadFromFile("C:\\images\\logo.jpg");    // JPG with full path
 ```
 
-### Obraz z zasobów
+### Image from Resources
 
 ```cpp
-// W resources.rc: 101 BITMAP "logo.bmp"
+// In resources.rc: 101 BITMAP "logo.bmp"
 ImageView* logo = new ImageView(10, 10, 100, 100);
 window->add(logo);
 logo->loadFromResource(101);
 ```
 
-### Tryb skalowania
+### Scale Mode
 
 ```cpp
-img->setScaleMode(ImageView::STRETCH);       // Rozciągnij
-img->setScaleMode(ImageView::ASPECT_FIT);    // Proporcjonalnie (domyślny)
-img->setScaleMode(ImageView::CENTER);        // Wyśrodkuj
+img->setScaleMode(ImageView::STRETCH);       // Stretch
+img->setScaleMode(ImageView::ASPECT_FIT);    // Proportional (default)
+img->setScaleMode(ImageView::CENTER);        // Center
 img->setScaleMode(ImageView::ACTUAL_SIZE);   // 1:1
 ```
 
-### Tło i ramka
+### Background and Border
 
 ```cpp
-img->setBackgroundColor(RGB(240, 240, 240));  // Jasnoszare tło
-img->setBorderStyle(false);                    // Bez ramki
+img->setBackgroundColor(RGB(240, 240, 240));  // Light gray background
+img->setBorderStyle(false);                    // No border
 ```
 
-## Uwagi
+## Notes
 
-- **GDI+** jest inicjowane i zamykane wewnętrznie podczas operacji ładowania
-- Obsługiwane formaty: BMP, PNG, JPEG, GIF, TIFF (co obsługuje GDI+)
-- `loadFromFile()` konwertuje ścieżkę z UTF-8 na UTF-16
-- `loadFromMemory()` tworzy `IStream` przez `SHCreateMemStream` (wymaga `Shlwapi`)
-- ID zaczynają się od **8000**
-- Rejestruje własną klasę okna `JQB_ImageView_Class`
-- `WM_ERASEBKGND` zwraca 1 — eliminuje migotanie
-- Skalowanie: `StretchBlt` z `HALFTONE` dla jakości
+- **GDI+** is initialized and shut down internally during load operations
+- Supported formats: BMP, PNG, JPEG, GIF, TIFF (whatever GDI+ supports)
+- `loadFromFile()` converts path from UTF-8 to UTF-16
+- `loadFromMemory()` creates an `IStream` via `SHCreateMemStream` (requires `Shlwapi`)
+- IDs start at **8000**
+- Registers its own window class `JQB_ImageView_Class`
+- `WM_ERASEBKGND` returns 1 — eliminates flicker
+- Scaling: `StretchBlt` with `HALFTONE` for quality

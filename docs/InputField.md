@@ -1,17 +1,17 @@
-# InputField — Pole edycji
+# InputField — Edit Field
 
 > `#include <UI/InputField/InputField.h>`
 
-## Opis
+## Description
 
-Jednoliniowe pole edycji tekstu z obsługą:
-- Tekst zastępczy (placeholder)
-- Limit znaków
-- Tryb readonly
-- Tryb hasła
-- Callback `onTextChange`
+Single-line edit field with support for:
+- Placeholder text
+- Character limit
+- Readonly mode
+- Password mode
+- `onTextChange` callback
 
-## Konstruktor
+## Constructor
 
 ```cpp
 InputField(int x, int y, int width, int height,
@@ -19,68 +19,68 @@ InputField(int x, int y, int width, int height,
            std::function<void(InputField*, const char*)> onTextChange = nullptr);
 ```
 
-| Parametr | Typ | Opis |
-|----------|-----|------|
-| `x`, `y` | `int` | Pozycja |
-| `width`, `height` | `int` | Rozmiar |
-| `defaultText` | `const char*` | Tekst startowy (UTF-8) |
-| `onTextChange` | `function<void(InputField*, const char*)>` | Callback przy zmianie lub Enter |
+| Parameter | Type | Description |
+|-----------|------|-------------|
+| `x`, `y` | `int` | Position |
+| `width`, `height` | `int` | Size |
+| `defaultText` | `const char*` | Initial text (UTF-8) |
+| `onTextChange` | `function<void(InputField*, const char*)>` | Callback on text change or Enter |
 
-## Metody
+## Methods
 
-| Metoda | Zwraca | Opis |
-|--------|--------|------|
-| `create(HWND parent)` | `void` | Tworzy kontrolkę EDIT |
-| `setText(const char* text)` | `void` | Ustawia tekst (UTF-8) |
-| `getText()` | `std::string` | Pobiera tekst (UTF-8) |
-| `setPlaceholder(const char* text)` | `void` | Tekst zastępczy (placeholder, `EM_SETCUEBANNER`) |
-| `setMaxLength(int maxLength)` | `void` | Limit znaków |
-| `setReadOnly(bool readOnly)` | `void` | Tryb tylko do odczytu |
-| `setPassword(bool isPassword)` | `void` | Tryb hasła (maskowanie znaków) |
-| `handleTextChange()` | `void` | Wywołuje callback |
-| `getHandle()` | `HWND` | Uchwyt kontrolki |
-| `getId()` | `int` | Unikalny ID (auto od 2000) |
+| Method | Returns | Description |
+|--------|---------|-------------|
+| `create(HWND parent)` | `void` | Creates the EDIT control |
+| `setText(const char* text)` | `void` | Sets text (UTF-8) |
+| `getText()` | `std::string` | Gets text (UTF-8) |
+| `setPlaceholder(const char* text)` | `void` | Placeholder text (`EM_SETCUEBANNER`) |
+| `setMaxLength(int maxLength)` | `void` | Character limit |
+| `setReadOnly(bool readOnly)` | `void` | Readonly mode |
+| `setPassword(bool isPassword)` | `void` | Password mode (character masking) |
+| `handleTextChange()` | `void` | Invokes callback |
+| `getHandle()` | `HWND` | Control handle |
+| `getId()` | `int` | Unique ID (auto from 2000) |
 
-## Przykłady
+## Examples
 
-### Pole z placeholderem
+### Field with Placeholder
 
 ```cpp
 InputField* input = new InputField(20, 50, 200, 25, "");
-input->setPlaceholder("Wpisz nazwę...");
+input->setPlaceholder("Enter name...");
 window->add(input);
 ```
 
-### Pole z callbackiem
+### Field with Callback
 
 ```cpp
 InputField* search = new InputField(20, 50, 200, 25, "",
     [](InputField* field, const char* text) {
-        // Reaguj na zmianę tekstu lub Enter
+        // React to text change or Enter
     }
 );
 window->add(search);
 ```
 
-### Pole hasła z limitem
+### Password Field with Limit
 
 ```cpp
 InputField* password = new InputField(20, 100, 200, 25, "");
 password->setPassword(true);
 password->setMaxLength(32);
-password->setPlaceholder("Haslo...");
+password->setPlaceholder("Password...");
 window->add(password);
 ```
 
-### Odczyt wartości
+### Reading Value
 
 ```cpp
 std::string value = inputField->getText();
 ```
 
-## Uwagi
+## Notes
 
-- ID zaczynają się od **2000**
-- Styl: `WS_CHILD | WS_VISIBLE | WS_BORDER | ES_AUTOHSCROLL`
-- Podklasowanie (subclassing) przechwytuje `WM_CHAR` (Enter) i `WM_COMMAND` (EN_CHANGE)
-- Placeholder wymaga Common Controls 6.0 (domyślnie dostępne w Windows Vista+)
+- IDs start at **2000**
+- Style: `WS_CHILD | WS_VISIBLE | WS_BORDER | ES_AUTOHSCROLL`
+- Subclassing captures `WM_CHAR` (Enter) and `WM_COMMAND` (EN_CHANGE)
+- Placeholder requires Common Controls 6.0 (available by default in Windows Vista+)

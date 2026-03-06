@@ -11,6 +11,8 @@ TextArea::TextArea(int x, int y, int width, int height)
 }
 
 TextArea::~TextArea() {
+    if (m_hFont) { DeleteObject(m_hFont); m_hFont = NULL; }
+    if (m_hBackBrush) { DeleteObject(m_hBackBrush); m_hBackBrush = NULL; }
     if (m_hwnd) {
         DestroyWindow(m_hwnd);
         m_hwnd = NULL;
@@ -104,4 +106,33 @@ void TextArea::clear() {
     if (m_hwnd) {
         SetWindowTextW(m_hwnd, L"");
     }
+}
+
+// ============================================================================
+// Stylizacja
+// ============================================================================
+void TextArea::setFont(const wchar_t* fontName, int size, bool bold) {
+    if (m_hFont) DeleteObject(m_hFont);
+    m_hFont = CreateFontW(
+        -size, 0, 0, 0, bold ? FW_BOLD : FW_NORMAL,
+        FALSE, FALSE, FALSE,
+        DEFAULT_CHARSET, OUT_DEFAULT_PRECIS, CLIP_DEFAULT_PRECIS,
+        CLEARTYPE_QUALITY, DEFAULT_PITCH | FF_DONTCARE, fontName);
+    if (m_hwnd && m_hFont) {
+        SendMessageW(m_hwnd, WM_SETFONT, (WPARAM)m_hFont, TRUE);
+    }
+}
+
+void TextArea::setTextColor(COLORREF color) {
+    m_textColor = color;
+    m_hasCustomColors = true;
+    if (m_hwnd) InvalidateRect(m_hwnd, NULL, TRUE);
+}
+
+void TextArea::setBackColor(COLORREF color) {
+    m_backColor = color;
+    m_hasCustomColors = true;
+    if (m_hBackBrush) DeleteObject(m_hBackBrush);
+    m_hBackBrush = CreateSolidBrush(color);
+    if (m_hwnd) InvalidateRect(m_hwnd, NULL, TRUE);
 }

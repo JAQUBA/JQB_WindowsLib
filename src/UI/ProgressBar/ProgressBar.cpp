@@ -10,6 +10,20 @@
 #define PBM_SETMARQUEE (WM_USER + 10)
 #endif
 
+// Wyłącz style wizualne aby PBM_SETBARCOLOR/BKCOLOR działał z Common Controls v6
+static void disableTheme(HWND hwnd) {
+    typedef HRESULT (WINAPI *SetWindowThemeFn)(HWND, LPCWSTR, LPCWSTR);
+    static SetWindowThemeFn fn = nullptr;
+    static bool loaded = false;
+    if (!loaded) {
+        HMODULE hMod = LoadLibraryW(L"uxtheme.dll");
+        if (hMod)
+            fn = (SetWindowThemeFn)GetProcAddress(hMod, "SetWindowTheme");
+        loaded = true;
+    }
+    if (fn) fn(hwnd, L"", L"");
+}
+
 // Inicjalizacja zmiennej statycznej
 int ProgressBar::s_nextId = 6000;
 
@@ -65,10 +79,12 @@ void ProgressBar::create(HWND parent) {
     SendMessage(m_hwnd, PBM_SETPOS, m_value, 0);
     
     // Ustaw kolory, jeśli zostały zmienione
+    if (m_color != RGB(0, 120, 215) || m_backColor != RGB(240, 240, 240)) {
+        disableTheme(m_hwnd);
+    }
     if (m_color != RGB(0, 120, 215)) {
         SendMessage(m_hwnd, PBM_SETBARCOLOR, 0, (LPARAM)m_color);
     }
-    
     if (m_backColor != RGB(240, 240, 240)) {
         SendMessage(m_hwnd, PBM_SETBKCOLOR, 0, (LPARAM)m_backColor);
     }
@@ -136,6 +152,7 @@ void ProgressBar::setColor(COLORREF color) {
     m_color = color;
     
     if (m_hwnd) {
+        disableTheme(m_hwnd);
         SendMessage(m_hwnd, PBM_SETBARCOLOR, 0, (LPARAM)m_color);
     }
 }
@@ -144,6 +161,7 @@ void ProgressBar::setBackColor(COLORREF color) {
     m_backColor = color;
     
     if (m_hwnd) {
+        disableTheme(m_hwnd);
         SendMessage(m_hwnd, PBM_SETBKCOLOR, 0, (LPARAM)m_backColor);
     }
 }

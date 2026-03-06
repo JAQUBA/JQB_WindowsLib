@@ -1,78 +1,78 @@
-# ConfigManager — Menedżer konfiguracji
+# ConfigManager — Configuration Manager
 
 > `#include <Util/ConfigManager.h>`
 
-## Opis
+## Description
 
-Prosty menedżer konfiguracji zapisujący ustawienia w formacie `klucz=wartość` (plik INI-like). Automatycznie wczytuje konfigurację przy tworzeniu i zapisuje przy zniszczeniu obiektu.
+Simple configuration manager saving settings in `key=value` format (INI-like file). Automatically loads configuration on creation and saves on destruction.
 
-## Konstruktor
+## Constructor
 
 ```cpp
 ConfigManager(const std::string& configFilePath = "config.ini");
 ```
 
-| Parametr | Typ | Opis |
-|----------|-----|------|
-| `configFilePath` | `std::string` | Ścieżka do pliku konfiguracyjnego |
+| Parameter | Type | Description |
+|-----------|------|-------------|
+| `configFilePath` | `std::string` | Path to configuration file |
 
-> Konstruktor automatycznie wywołuje `loadFromFile()`.
+> Constructor automatically calls `loadFromFile()`.
 
-## Format pliku
+## File Format
 
 ```ini
-# Komentarz — linie zaczynające się od # lub ; są ignorowane
-klucz1=wartość1
-klucz2=wartość2
+# Comment — lines starting with # or ; are ignored
+key1=value1
+key2=value2
 port=COM3
 baudrate=9600
 ```
 
-## Metody
+## Methods
 
-| Metoda | Zwraca | Opis |
-|--------|--------|------|
-| `setValue(key, value)` | `void` | Zapisuje parę klucz-wartość |
-| `getValue(key, defaultValue)` | `std::string` | Pobiera wartość (lub domyślną) |
-| `hasKey(key)` | `bool` | Sprawdza istnienie klucza |
-| `removeKey(key)` | `void` | Usuwa klucz |
-| `saveToFile()` | `bool` | Zapisuje do pliku |
-| `loadFromFile()` | `bool` | Wczytuje z pliku |
-| `setConfigFilePath(path)` | `void` | Zmienia ścieżkę pliku |
-| `getKeys()` | `vector<string>` | Lista wszystkich kluczy |
+| Method | Returns | Description |
+|--------|---------|-------------|
+| `setValue(key, value)` | `void` | Stores a key-value pair |
+| `getValue(key, defaultValue)` | `std::string` | Gets value (or default) |
+| `hasKey(key)` | `bool` | Checks if key exists |
+| `removeKey(key)` | `void` | Removes a key |
+| `saveToFile()` | `bool` | Saves to file |
+| `loadFromFile()` | `bool` | Loads from file |
+| `setConfigFilePath(path)` | `void` | Changes file path |
+| `getKeys()` | `vector<string>` | List of all keys |
 
-## Przykłady
+## Examples
 
-### Podstawowe użycie
+### Basic Usage
 
 ```cpp
 #include <Util/ConfigManager.h>
 
 ConfigManager config("settings.ini");
 
-// Zapis
+// Write
 config.setValue("port", "COM3");
 config.setValue("baudrate", "9600");
 config.setValue("username", "admin");
 
-// Odczyt
+// Read
 std::string port = config.getValue("port", "COM1");       // "COM3"
 std::string baud = config.getValue("baudrate", "115200");  // "9600"
 std::string missing = config.getValue("nonexistent", "default");  // "default"
 
-// Sprawdzenie
+// Check
 if (config.hasKey("port")) {
-    // klucz istnieje
+    // key exists
 }
 
-// Usunięcie
+// Remove
 config.removeKey("username");
 
-// Manual save (automatyczny przy destruktorze)
+// Manual save (automatic on destructor)
 config.saveToFile();
 ```
 
-### Zapamiętywanie ustawień okna
+### Remembering Window Settings
 
 ```cpp
 ConfigManager cfg("app_settings.ini");
@@ -81,17 +81,17 @@ void setup() {
     std::string lastPort = cfg.getValue("last_port", "COM1");
     std::string lastDevice = cfg.getValue("last_device", "");
     
-    // ... użyj wartości do ustawienia kontrolek
+    // ... use values to configure controls
 }
 
-// Przy zmianie ustawień:
+// On settings change:
 void onPortChange(const char* port) {
     cfg.setValue("last_port", port);
-    // Auto-save przy wyjściu z programu (destruktor)
+    // Auto-save on program exit (destructor)
 }
 ```
 
-### Lista kluczy
+### Listing Keys
 
 ```cpp
 std::vector<std::string> keys = config.getKeys();
@@ -101,30 +101,30 @@ for (const auto& key : keys) {
 }
 ```
 
-## Cykl życia
+## Lifecycle
 
 ```
 ConfigManager("config.ini")
      │
      ▼
-  loadFromFile()     ← automatycznie w konstruktorze
+  loadFromFile()     ← automatic in constructor
      │
      ▼
-  setValue() / getValue() ...  ← użycie w programie
+  setValue() / getValue() ...  ← usage in program
      │
      ▼
   ~ConfigManager()
      │
      ▼
-  saveToFile()       ← automatycznie w destruktorze
+  saveToFile()       ← automatic in destructor
 ```
 
-## Uwagi
+## Notes
 
-- Białe znaki (spacje, tabulatory) wokół kluczy i wartości są automatycznie usuwane (trimming)
-- Puste klucze są ignorowane
-- Komentarze: linie zaczynające się od `#` lub `;`
-- Puste linie są pomijane
-- Plik nadpisywany w całości przy `saveToFile()` (nie aktualizuje pojedynczych wpisów)
-- Brak obsługi sekcji `[section]` — wszystkie klucze w jednej płaskiej przestrzeni
-- Kodowanie pliku: zależne od systemu (zwykle ANSI/UTF-8)
+- Whitespace (spaces, tabs) around keys and values is automatically trimmed
+- Empty keys are ignored
+- Comments: lines starting with `#` or `;`
+- Empty lines are skipped
+- File is fully rewritten on `saveToFile()` (does not update individual entries)
+- No support for `[section]` — all keys in a flat namespace
+- File encoding: system-dependent (usually ANSI/UTF-8)

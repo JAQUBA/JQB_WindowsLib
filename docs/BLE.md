@@ -2,91 +2,126 @@
 
 > `#include <IO/BLE/BLE.h>`
 
-## Opis
+## Description
 
-Moduł komunikacji Bluetooth Low Energy (BLE) z:
-- Sprawdzaniem dostępności adaptera BT
-- Skanowaniem urządzeń BLE (przez SetupAPI)
-- Łączeniem z urządzeniami
-- Wątkowym odbiorem danych (overlapped I/O)
-- Callbackami: connect, disconnect, receive, deviceDiscovered, scanComplete, error
+Universal Bluetooth Low Energy (BLE) communication module with:
+- BT adapter availability check
+- BLE device scanning (via SetupAPI) with optional filter
+- Device prioritization in results list
+- Device connection
+- **GATT support** — automatic service discovery, notification registration, characteristic write
+- Callbacks: connect, disconnect, receive, deviceDiscovered, scanComplete, error
 
-## Stan połączenia
+## Connection State
 
 ```cpp
 enum class ConnectionState {
-    DISCONNECTED,       // Rozłączony
-    SCANNING,           // Skanowanie
-    CONNECTING,         // Łączenie
-    CONNECTED,          // Połączony
-    CONNECTION_ERROR    // Błąd połączenia
+    DISCONNECTED,       // Disconnected
+    SCANNING,           // Scanning
+    CONNECTING,         // Connecting
+    CONNECTED,          // Connected
+    CONNECTION_ERROR    // Connection error
 };
 ```
 
-## Struktura `BLEDevice`
+## `BLEDevice` Structure
 
 ```cpp
 struct BLEDevice {
-    std::wstring name;         // Nazwa urządzenia
-    std::wstring address;      // Adres (device path)
-    int rssi;                  // Siła sygnału (0 jeśli niedostępne)
-    bool isConnectable;        // Czy można się połączyć
+    std::wstring name;         // Device name
+    std::wstring address;      // Address (device path)
+    int rssi;                  // Signal strength (0 if unavailable)
+    bool isConnectable;        // Whether connection is possible
     
-    std::string toString() const;  // "NazwaUrzadzenia (RSSI: -50 dBm)"
+    std::string toString() const;  // "DeviceName (RSSI: -50 dBm)"
 };
 ```
 
-## Metody
+## `BLEScanFilter` Structure
 
-### Inicjalizacja
+Device filter applied during scanning. Both fields are optional (case-insensitive).
 
-| Metoda | Zwraca | Opis |
-|--------|--------|------|
-| `init()` | `bool` | Inicjalizacja — sprawdza adapter BT |
-| `isAvailable()` | `bool` | Czy BLE jest dostępne w systemie |
+```cpp
+struct BLEScanFilter {
+    std::wstring nameContains;   // Device name fragment
+    std::wstring pathContains;   // Device path fragment
+    
+    BLEScanFilter();                              // No filter
+    BLEScanFilter(const std::wstring& name);      // Filter by name
+    BLEScanFilter(const std::wstring& name,
+                  const std::wstring& path);      // Filter by name and path
+    bool isEmpty() const;
+};
+```
 
-### Skanowanie
+## Methods
 
-| Metoda | Zwraca | Opis |
-|--------|--------|------|
-| `startScan(int seconds = 10)` | `bool` | Rozpoczyna skanowanie (w wątku) |
-| `stopScan()` | `void` | Zatrzymuje skanowanie |
-| `isScanning()` | `bool` | Czy skanowanie trwa |
-| `getDiscoveredDevices()` | `const vector<BLEDevice>&` | Lista znalezionych urządzeń |
-| `getAvailableDevices()` | `const vector<string>&` | Lista urządzeń jako stringi (dla Select) |
+### Initialization
 
-### Połączenie
+| Method | Returns | Description |
+|--------|---------|-------------|
+| `init()` | `bool` | Initialization — checks BT adapter |
+| `isAvailable()` | `bool` | Whether BLE is available in the system |
 
-| Metoda | Zwraca | Opis |
-|--------|--------|------|
-| `connect(const wstring& address)` | `bool` | Łączy się z urządzeniem (w wątku) |
-| `disconnect()` | `void` | Rozłącza |
-| `isConnected()` | `bool` | Czy połączony |
-| `setDevice(const wstring& name)` | `void` | Ustawia urządzenie po nazwie/adresie |
-| `getConnectionState()` | `ConnectionState` | Aktualny stan |
-| `getConnectionStateString()` | `wstring` | Stan jako tekst (PL) |
+### Scanning
 
-### Wysyłanie
+| Method | Returns | Description |
+|--------|---------|-------------|
+| `startScan(int seconds = 10)` | `bool` | Scan for all BLE devices |
+| `startScan(const BLEScanFilter& filter, int seconds = 10)` | `bool` | Scan with filter |
+| `stopScan()` | `void` | Stops scanning |
+| `isScanning()` | `bool` | Whether scanning is in progress |
+| `getDiscoveredDevices()` | `const vector<BLEDevice>&` | List of found devices |
+| `getAvailableDevices()` | `const vector<string>&` | Device list as strings (for Select) |
 
-| Metoda | Zwraca | Opis |
-|--------|--------|------|
-| `write(const vector<uint8_t>& data)` | `bool` | Wysyła dane (overlapped I/O) |
-| `send(const vector<uint8_t>& data)` | `bool` | Alias dla `write()` |
+### Connection
 
-### Callbacki
+| Method | Returns | Description |
+|--------|---------|-------------|
+| `connect(const wstring& address)` | `bool` | Connects to device (in thread) |
+| `disconnect()` | `void` | Disconnects |
+| `isConnected()` | `bool` | Whether connected |
+| `setDevice(const wstring& name)` | `void` | Sets device by name/address |
+| `getConnectionState()` | `ConnectionState` | Current state |
 
-| Metoda | Parametry | Kiedy |
-|--------|-----------|-------|
-| `onConnect(function<void()>)` | — | Po nawiązaniu połączenia |
-| `onDisconnect(function<void()>)` | — | Po rozłączeniu |
-| `onReceive(function<void(const vector<uint8_t>&)>)` | dane | Odebrano dane |
-| `onDeviceDiscovered(function<void(const BLEDevice&)>)` | urządzenie | Znaleziono nowe urządzenie |
-| `onScanComplete(function<void()>)` | — | Zakończono skanowanie |
-| `onError(function<void(const wstring&)>)` | komunikat | Wystąpił błąd |
+### GATT Configuration (before connect)
 
-## Przykłady
+| Method | Description |
+|--------|-------------|
+| `setServiceUUID(const wstring& uuid)` | GATT service UUID (e.g. `L"0000fff0-0000-1000-8000-00805f9b34fb"`) |
+| `setNotifyCharacteristicUUID(const wstring& uuid)` | Notify characteristic UUID (data reception). Optional — auto-detect if omitted |
+| `setWriteCharacteristicUUID(const wstring& uuid)` | Write characteristic UUID (sending data). Optional — auto-detect if omitted |
 
-### Skanowanie i połączenie
+> **Note:** `setServiceUUID()` is required to activate GATT. If you don't set the service UUID, the connection will be established without GATT (raw handle).
+
+### Sending Data
+
+| Method | Returns | Description |
+|--------|---------|-------------|
+| `write(const vector<uint8_t>& data)` | `bool` | Sends data via GATT characteristic write (or overlapped I/O as fallback) |
+| `send(const vector<uint8_t>& data)` | `bool` | Alias for `write()` |
+
+### Device Prioritization
+
+| Method | Description |
+|--------|-------------|
+| `addPriorityFilter(const wstring& fragment)` | Devices matching the name/path fragment appear at the top of the list |
+| `clearPriorityFilters()` | Removes all priority filters |
+
+### Callbacks
+
+| Method | Parameters | When |
+|--------|------------|------|
+| `onConnect(function<void()>)` | — | After connection established |
+| `onDisconnect(function<void()>)` | — | After disconnection |
+| `onReceive(function<void(const vector<uint8_t>&)>)` | data | Data received |
+| `onDeviceDiscovered(function<void(const BLEDevice&)>)` | device | New device found |
+| `onScanComplete(function<void()>)` | — | Scanning completed |
+| `onError(function<void(const wstring&)>)` | message | Error occurred |
+
+## Examples
+
+### Scanning All BLE Devices
 
 ```cpp
 #include <IO/BLE/BLE.h>
@@ -94,48 +129,64 @@ struct BLEDevice {
 BLE ble;
 
 void setup() {
-    if (!ble.init()) {
-        // Bluetooth niedostępny
-        return;
-    }
-    
+    if (!ble.init()) return;
+
+    // GATT configuration (service and characteristic UUIDs)
+    ble.setServiceUUID(L"0000fff0-0000-1000-8000-00805f9b34fb");
+    ble.setNotifyCharacteristicUUID(L"0000fff4-0000-1000-8000-00805f9b34fb");
+    ble.setWriteCharacteristicUUID(L"0000fff3-0000-1000-8000-00805f9b34fb");
+
     ble.onDeviceDiscovered([](const BLEDevice& device) {
-        // Nowe urządzenie znalezione
+        // New device found
     });
-    
+
     ble.onScanComplete([]() {
-        // Skanowanie zakończone
         auto& devices = ble.getDiscoveredDevices();
         if (!devices.empty()) {
             ble.connect(devices[0].address);
         }
     });
-    
-    ble.onConnect([]() {
-        lblStatus->setText(L"Połączono przez BLE!");
-    });
-    
-    ble.onReceive([](const std::vector<uint8_t>& data) {
-        // Odebrano dane
-    });
-    
-    ble.onError([](const std::wstring& error) {
-        // Obsługa błędu
-    });
-    
-    ble.startScan(10);  // Skanuj 10 sekund
+
+    ble.onConnect([]() { /* Connected — GATT configured automatically */ });
+    ble.onReceive([](const std::vector<uint8_t>& data) { /* Data from GATT notify */ });
+    ble.onError([](const std::wstring& error) { /* Error */ });
+
+    ble.startScan(10);
 }
 ```
 
-### Integracja z Select
+### Scanning with Name Filter
+
+```cpp
+// Scan only devices containing "OW18B" in name
+ble.startScan(BLEScanFilter(L"OW18B"), 10);
+```
+
+### Scanning with Name and Path Filter
+
+```cpp
+// Filter by name and path fragment
+ble.startScan(BLEScanFilter(L"", L"dev_aabbccddee"), 10);
+```
+
+### Device Prioritization
+
+```cpp
+// OWON devices appear at the top of the list
+ble.addPriorityFilter(L"owon");
+ble.addPriorityFilter(L"ow18b");
+ble.startScan(10);
+```
+
+### Integration with Select
 
 ```cpp
 BLE ble;
 ble.init();
 
-Select* selDevice = new Select(20, 50, 300, 25, "Urządzenie BLE",
+Select* selDevice = new Select(20, 50, 300, 25, "BLE Device",
     [](Select* s) {
-        int idx = /* pobierz indeks */;
+        int idx = /* get index */;
         auto& devices = ble.getDiscoveredDevices();
         if (idx >= 0 && idx < devices.size()) {
             ble.connect(devices[idx].address);
@@ -152,34 +203,28 @@ ble.onScanComplete([selDevice]() {
 ble.startScan();
 ```
 
-### Wysyłanie danych
+### Sending Data
 
 ```cpp
 std::vector<uint8_t> cmd = {0x01, 0x02, 0x03};
 ble.write(cmd);
 ```
 
-## Stałe UUID (OWON OW18B)
+## Threads
 
-```cpp
-static const std::wstring OWON_SERVICE_UUID;                    // 0000fff0-...
-static const std::wstring OWON_NOTIFY_CHARACTERISTIC_UUID;      // 0000fff4-...
-static const std::wstring OWON_WRITE_CHARACTERISTIC_UUID;       // 0000fff3-...
-```
+| Thread | Function | Description |
+|--------|----------|-------------|
+| Scanning | `scanThreadFunction()` | BLE device enumeration via SetupAPI |
+| Connection | `connectionThreadFunction()` | `CreateFileW()` to BLE device + GATT setup |
 
-## Wątki
+> GATT notifications don't require a separate thread — the callback is invoked by the Windows thread pool and marshaled to the UI thread via PostMessage.
 
-| Wątek | Funkcja | Opis |
-|-------|---------|------|
-| Skanowanie | `scanThreadFunction()` | Enumeracja urządzeń BLE przez SetupAPI |
-| Połączenie | `connectionThreadFunction()` | `CreateFileW()` do urządzenia BLE |
-| Powiadomienia | `notificationThreadFunction()` | Overlapped `ReadFile()` z timeout 100 ms |
+## Notes
 
-## Uwagi
-
-- Implementacja używa **Windows SetupAPI** do enumeracji i **CreateFile** do I/O
-- Pełna obsługa GATT (BluetoothGATT*) wymaga Windows SDK, tu implementacja jest uproszczona
-- I/O jest overlapped (`FILE_FLAG_OVERLAPPED`)
-- `startScan()` enumeruje sparowane urządzenia BLE (nie aktywny BLE advertising)
-- `getConnectionStateString()` zwraca tekst po polsku: „Rozłączony", „Łączenie...", „Połączony", „Błąd"
-- Urządzenia OWON priorytetyzowane na liście (dodawane na początek)
+- Implementation uses **Windows SetupAPI** for enumeration and **Windows GATT API** (`BluetoothApis.dll`) for communication
+- `BluetoothApis.dll` loaded dynamically in `init()` — no static linking
+- `startScan()` enumerates paired BLE devices (not active BLE advertising)
+- Callbacks from worker threads are marshaled to the UI thread via PostMessage
+- The class contains no constants specific to any particular device — UUIDs and filters are configured by the application
+- If `setServiceUUID()` is set → `connect()` automatically performs GATT discovery, CCCD enable, and notification registration
+- `write()` uses `BluetoothGATTSetCharacteristicValue` when GATT is available, with fallback to overlapped `WriteFile`

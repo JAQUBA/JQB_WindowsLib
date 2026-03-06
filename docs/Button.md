@@ -1,14 +1,14 @@
-# Button — Przycisk
+# Button — Button
 
 > `#include <UI/Button/Button.h>`
 
-## Opis
+## Description
 
-Przycisk z obsługą:
-- **Kliknięcia** (`onClick`) — callback wywoływany po krótkim naciśnięciu
-- **Długiego naciśnięcia** (`onLongClick`) — callback po przytrzymaniu ≥ 800 ms
+Button with support for:
+- **Click** (`onClick`) — callback invoked on short press
+- **Long press** (`onLongClick`) — callback after holding ≥ 800 ms
 
-## Konstruktor
+## Constructor
 
 ```cpp
 Button(int x, int y, int width, int height, const char* text,
@@ -16,76 +16,89 @@ Button(int x, int y, int width, int height, const char* text,
        std::function<void(Button*)> onLongClick = nullptr);
 ```
 
-| Parametr | Typ | Opis |
-|----------|-----|------|
-| `x`, `y` | `int` | Pozycja lewego górnego rogu (piksele, względem rodzica) |
-| `width`, `height` | `int` | Rozmiar przycisku |
-| `text` | `const char*` | Tekst na przycisku (UTF-8) |
-| `onClick` | `function<void(Button*)>` | Callback kliknięcia |
-| `onLongClick` | `function<void(Button*)>` | Callback długiego naciśnięcia (opcjonalny) |
+| Parameter | Type | Description |
+|-----------|------|-------------|
+| `x`, `y` | `int` | Top-left position (pixels, relative to parent) |
+| `width`, `height` | `int` | Button size |
+| `text` | `const char*` | Button text (UTF-8) |
+| `onClick` | `function<void(Button*)>` | Click callback |
+| `onLongClick` | `function<void(Button*)>` | Long press callback (optional) |
 
-## Metody
+## Methods
 
-| Metoda | Zwraca | Opis |
-|--------|--------|------|
-| `create(HWND parent)` | `void` | Tworzy kontrolkę Windows (wywoływana automatycznie przez `SimpleWindow::add()`) |
-| `handleClick()` | `void` | Wywołuje callback `onClick` |
-| `handleLongClick()` | `void` | Wywołuje callback `onLongClick` |
-| `getX()` | `int` | Pozycja X |
-| `getY()` | `int` | Pozycja Y |
-| `getWidth()` | `int` | Szerokość |
-| `getHeight()` | `int` | Wysokość |
-| `getText()` | `const char*` | Tekst przycisku |
-| `getHandle()` | `HWND` | Uchwyt kontrolki Windows |
-| `getId()` | `int` | Unikalny identyfikator (auto-generowany od 1000) |
+| Method | Returns | Description |
+|--------|---------|-------------|
+| `create(HWND parent)` | `void` | Creates the Windows control (called automatically by `SimpleWindow::add()`) |
+| `handleClick()` | `void` | Invokes `onClick` callback |
+| `handleLongClick()` | `void` | Invokes `onLongClick` callback |
+| `setBackColor(COLORREF color)` | `void` | Background color |
+| `setTextColor(COLORREF color)` | `void` | Text color |
+| `setHoverColor(COLORREF color)` | `void` | Hover background color |
+| `getX()` | `int` | X position |
+| `getY()` | `int` | Y position |
+| `getWidth()` | `int` | Width |
+| `getHeight()` | `int` | Height |
+| `getText()` | `const char*` | Button text |
+| `getHandle()` | `HWND` | Windows control handle |
+| `getId()` | `int` | Unique ID (auto-generated from 1000) |
 
-## Mechanizm Long Press
+## Long Press Mechanism
 
-- Przycisk przechwytuje `WM_LBUTTONDOWN` / `WM_LBUTTONUP` przez podklasowanie (subclassing)
-- Timer co 50 ms sprawdza czas naciśnięcia
-- Jeśli ≥ 800 ms → `onLongClick` i **nie** wywołuje `onClick`
-- Jeśli < 800 ms → tylko `onClick`
+- Button captures `WM_LBUTTONDOWN` / `WM_LBUTTONUP` via subclassing
+- Timer checks press duration every 50 ms
+- If ≥ 800 ms → `onLongClick` is called and `onClick` is **not** invoked
+- If < 800 ms → only `onClick`
 
-## Przykłady
+## Examples
 
-### Przycisk z kliknięciem
+### Button with Click
 
 ```cpp
-window->add(new Button(20, 20, 120, 35, "Kliknij",
+window->add(new Button(20, 20, 120, 35, "Click",
     [](Button* btn) {
-        // Obsługa kliknięcia
+        // Handle click
     }
 ));
 ```
 
-### Przycisk z długim naciśnięciem
+### Button with Long Press
 
 ```cpp
-window->add(new Button(20, 60, 120, 35, "Przytrzymaj",
+window->add(new Button(20, 60, 120, 35, "Hold",
     [](Button* btn) {
-        // Krótkie kliknięcie
+        // Short click
     },
     [](Button* btn) {
-        // Długie naciśnięcie (≥ 800 ms)
+        // Long press (≥ 800 ms)
     }
 ));
 ```
 
-### Przycisk akcji z dostępem do innych komponentów
+### Styled Button
 
 ```cpp
-Label* status = new Label(20, 20, 200, 25, L"Gotowy");
+Button* btn = new Button(20, 20, 120, 35, "Connect", [](Button*) { /* ... */ });
+btn->setBackColor(RGB(40, 130, 200));
+btn->setTextColor(RGB(255, 255, 255));
+btn->setHoverColor(RGB(50, 150, 220));
+window->add(btn);
+```
+
+### Button with Access to Other Components
+
+```cpp
+Label* status = new Label(20, 20, 200, 25, L"Ready");
 window->add(status);
 
-window->add(new Button(20, 60, 100, 30, "Akcja",
+window->add(new Button(20, 60, 100, 30, "Action",
     [status](Button* btn) {
-        status->setText(L"Wykonano akcję!");
+        status->setText(L"Action performed!");
     }
 ));
 ```
 
-## Uwagi
+## Notes
 
-- ID przycisków zaczynają się od **1000** (auto-inkrementacja)
-- Tekst przycisku jest konwertowany z UTF-8 na UTF-16 automatycznie
-- Destruktor automatycznie czyści mapy wewnętrzne i niszczy okno
+- Button IDs start at **1000** (auto-increment)
+- Button text is converted from UTF-8 to UTF-16 automatically
+- Destructor automatically cleans up internal maps and destroys the window

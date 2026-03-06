@@ -8,6 +8,8 @@
 #include "../../Util/StringUtils.h"
 #include <CommCtrl.h>  // Dodany plik nagłówkowy dla TCN_SELCHANGE
 
+static const wchar_t* WINDOW_CLASS_NAME = L"JQB_SimpleWindow";
+
 // Inicjalizacja statycznej zmiennej
 SimpleWindow* SimpleWindow::s_instance = nullptr;
 
@@ -40,6 +42,10 @@ SimpleWindow::~SimpleWindow() {
     m_valueDisplays.clear();
     m_charts.clear();
 
+    // Usunięcie pędzla tła
+    if (m_hBackBrush) { DeleteObject(m_hBackBrush); m_hBackBrush = NULL; }
+    if (m_hCtrlBrush) { DeleteObject(m_hCtrlBrush); m_hCtrlBrush = NULL; }
+
     // Zniszczenie okna
     if (m_hwnd) {
         DestroyWindow(m_hwnd);
@@ -53,7 +59,7 @@ bool SimpleWindow::init() {
     WNDCLASSW mainWindow = {};
     mainWindow.lpfnWndProc = WindowProc;
     mainWindow.hInstance = _core.hInstance;
-    mainWindow.lpszClassName = L"OWON_OW18B_Window";
+    mainWindow.lpszClassName = WINDOW_CLASS_NAME;
     mainWindow.hbrBackground = (HBRUSH)(COLOR_WINDOW + 1);
     mainWindow.hCursor = LoadCursor(NULL, IDC_ARROW);
     
@@ -64,8 +70,8 @@ bool SimpleWindow::init() {
         mainWindow.hIcon = LoadIcon(NULL, IDI_APPLICATION);
     }
     
-    // Wyrejestruj klasę, jeśli już istnieje (również wersja W)
-    UnregisterClassW(L"OWON_OW18B_Window", _core.hInstance);
+    // Wyrejestruj klasę, jeśli już istnieje
+    UnregisterClassW(WINDOW_CLASS_NAME, _core.hInstance);
     
     if (!RegisterClassW(&mainWindow)) {
         return false;
@@ -79,7 +85,7 @@ bool SimpleWindow::init() {
     
     // Tworzenie okna z użyciem funkcji Unicode (CreateWindowW)
     m_hwnd = CreateWindowW(
-        L"OWON_OW18B_Window",
+        WINDOW_CLASS_NAME,
         m_titleW.c_str(),  // Użycie wstring zamiast char*
         WS_OVERLAPPEDWINDOW,
         CW_USEDEFAULT, CW_USEDEFAULT,
@@ -103,6 +109,30 @@ bool SimpleWindow::init() {
 
 void SimpleWindow::close() {
     PostMessage(m_hwnd, WM_CLOSE, 0, 0);
+}
+
+void SimpleWindow::setMenu(HMENU menu) {
+    if (m_hwnd && menu) {
+        ::SetMenu(m_hwnd, menu);
+        // Przelicz rozmiar okna uwzględniając menu
+        RECT rc = { 0, 0, m_width, m_height };
+        AdjustWindowRect(&rc, WS_OVERLAPPEDWINDOW, TRUE);
+        SetWindowPos(m_hwnd, NULL, 0, 0,
+                     rc.right - rc.left, rc.bottom - rc.top,
+                     SWP_NOMOVE | SWP_NOZORDER);
+    }
+}
+
+void SimpleWindow::setBackgroundColor(COLORREF color) {
+    m_backColor = color;
+    if (m_hBackBrush) DeleteObject(m_hBackBrush);
+    m_hBackBrush = CreateSolidBrush(color);
+    // Create a slightly lighter brush for editable controls
+    if (m_hCtrlBrush) DeleteObject(m_hCtrlBrush);
+    int r = GetRValue(color), g = GetGValue(color), b = GetBValue(color);
+    m_hCtrlBrush = CreateSolidBrush(RGB(
+        r + (255 - r) / 8, g + (255 - g) / 8, b + (255 - b) / 8));
+    if (m_hwnd) InvalidateRect(m_hwnd, NULL, TRUE);
 }
 
 // Nowa główna metoda do dodawania komponentów UI
@@ -147,11 +177,127 @@ void SimpleWindow::add(Chart* chart) {
 LRESULT CALLBACK SimpleWindow::WindowProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam) {
     // Obsługa wiadomości
     switch (uMsg) {
+        // Obsługa kolorów etykiet (Label) z niestandardowymi kolorami
+        case WM_CTLCOLORSTATIC: {
+            HDC hdc = (HDC)wParam;
+            HWND hCtrl = (HWND)lParam;
+            if (s_instance) {
+                // Label — kolory tekstu i tła
+                for (auto* label : s_instance->m_labels) {
+                    if (label->getHandle() == hCtrl && label->hasCustomColors()) {
+                        if (label->getTextColor() != CLR_INVALID)
+                            SetTextColor(hdc, label->getTextColor());
+                        if (label->getBackColor() != CLR_INVALID) {
+                            SetBkColor(hdc, label->getBackColor());
+                            return (LRESULT)label->getBackBrush();
+                        }
+                        SetBkMode(hdc, TRANSPARENT);
+                        // Zwróć pędzel tła okna lub NULL_BRUSH
+                        if (s_instance->m_hBackBrush)
+                            return (LRESULT)s_instance->m_hBackBrush;
+                        return (LRESULT)GetStockObject(NULL_BRUSH);
+                    }
+                }
+                // TextArea (ES_READONLY) — kolory tekstu i tła
+                for (auto* ta : s_instance->m_textAreas) {
+                    if (ta->getHandle() == hCtrl && ta->hasCustomColors()) {
+                        if (ta->getTextColor() != CLR_INVALID)
+                            SetTextColor(hdc, ta->getTextColor());
+                        if (ta->getBackColor() != CLR_INVALID) {
+                            SetBkColor(hdc, ta->getBackColor());
+                            return (LRESULT)ta->getBackBrush();
+                        }
+                        SetBkMode(hdc, TRANSPARENT);
+                        if (s_instance->m_hBackBrush)
+                            return (LRESULT)s_instance->m_hBackBrush;
+                        return (LRESULT)GetStockObject(NULL_BRUSH);
+                    }
+                }
+                // For any non-Label STATIC control, apply window background and text color
+                if (s_instance->m_hBackBrush) {
+                    if (s_instance->m_textColor != CLR_INVALID)
+                        SetTextColor(hdc, s_instance->m_textColor);
+                    SetBkMode(hdc, TRANSPARENT);
+                    return (LRESULT)s_instance->m_hBackBrush;
+                }
+            }
+            break;
+        }
+
+        // Dark background for checkbox/radio controls
+        case WM_CTLCOLORBTN: {
+            if (s_instance && s_instance->m_hBackBrush) {
+                if (s_instance->m_textColor != CLR_INVALID)
+                    SetTextColor((HDC)wParam, s_instance->m_textColor);
+                return (LRESULT)s_instance->m_hBackBrush;
+            }
+            break;
+        }
+
+        // Dark theme for ComboBox list and edit portion
+        case WM_CTLCOLORLISTBOX:
+        case WM_CTLCOLOREDIT: {
+            if (s_instance && s_instance->m_hBackBrush) {
+                HDC hdc = (HDC)wParam;
+                if (s_instance->m_textColor != CLR_INVALID)
+                    SetTextColor(hdc, s_instance->m_textColor);
+                if (s_instance->m_backColor != CLR_INVALID)
+                    SetBkColor(hdc, s_instance->m_backColor);
+                return (LRESULT)s_instance->m_hBackBrush;
+            }
+            break;
+        }
+
+        // Owner-draw controls (buttons)
+        case WM_DRAWITEM: {
+            DRAWITEMSTRUCT* dis = (DRAWITEMSTRUCT*)lParam;
+            if (dis->CtlType == ODT_BUTTON && s_instance) {
+                // Check library Button instances first
+                for (auto* btn : s_instance->m_buttons) {
+                    if (btn->getId() == (int)dis->CtlID && btn->hasCustomColors()) {
+                        btn->drawOwnerDraw(dis);
+                        return TRUE;
+                    }
+                }
+                // Check all components via virtual handleDrawItem
+                for (auto* comp : s_instance->m_components) {
+                    if (comp->handleDrawItem(dis)) {
+                        return TRUE;
+                    }
+                }
+                // Then custom callback
+                if (s_instance->m_onDrawItem && s_instance->m_onDrawItem(dis)) {
+                    return TRUE;
+                }
+            }
+            break;
+        }
+
+        // Malowanie tła okna niestandardowym kolorem
+        case WM_ERASEBKGND: {
+            if (s_instance && s_instance->m_hBackBrush) {
+                HDC hdc = (HDC)wParam;
+                RECT rc;
+                GetClientRect(hwnd, &rc);
+                FillRect(hdc, &rc, s_instance->m_hBackBrush);
+                return 1;
+            }
+            break;
+        }
+
         case WM_COMMAND: {
             int controlId = LOWORD(wParam);
             int notificationCode = HIWORD(wParam);
             
             if (s_instance) {
+                // Komenda z menu (lParam == 0 oznacza menu, nie kontrolkę)
+                if (notificationCode == 0 && lParam == 0 && controlId > 0) {
+                    if (s_instance->m_onMenuCommand) {
+                        s_instance->m_onMenuCommand(controlId);
+                        return 0;
+                    }
+                }
+                
                 // Obsługa kliknięć i innych zdarzeń dla wszystkich komponentów
                 if (notificationCode == BN_CLICKED) {
                     // Zakończenie naciśnięcia przycisku
@@ -217,6 +363,10 @@ LRESULT CALLBACK SimpleWindow::WindowProc(HWND hwnd, UINT uMsg, WPARAM wParam, L
             return 0;
             
         case WM_CLOSE:
+            // Wywołaj callback onClose przed zamknięciem
+            if (s_instance && s_instance->m_onCloseCallback) {
+                s_instance->m_onCloseCallback();
+            }
             DestroyWindow(hwnd);
             return 0;
             
@@ -225,6 +375,7 @@ LRESULT CALLBACK SimpleWindow::WindowProc(HWND hwnd, UINT uMsg, WPARAM wParam, L
             return 0;
             
         default:
-            return DefWindowProcW(hwnd, uMsg, wParam, lParam); // Zmiana na DefWindowProcW
+            return DefWindowProcW(hwnd, uMsg, wParam, lParam);
     }  // Zamknięcie switch
+    return DefWindowProcW(hwnd, uMsg, wParam, lParam);
 }  // Zamknięcie funkcji WindowProc

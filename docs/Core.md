@@ -1,83 +1,83 @@
-# Core — Rdzeń aplikacji
+# Core — Application Core
 
 > `#include <Core.h>`
 
-## Opis
+## Description
 
-`Core` to rdzeń biblioteki JQB_WindowsLib. Zapewnia:
-- Punkt wejścia aplikacji Windows (`WinMain`)
-- Pętlę komunikatów (message loop)
-- Model programowania w stylu Arduino: `init()` → `setup()` → `loop()`
+`Core` is the heart of JQB_WindowsLib. It provides:
+- The Windows application entry point (`WinMain`)
+- The message loop
+- Arduino-like programming model: `init()` → `setup()` → `loop()`
 
-## Jak to działa
+## How It Works
 
 ```
-1. Globalny obiekt `_core` jest tworzony automatycznie
-2. Konstruktor Core wywołuje init()
-3. Windows wywołuje WinMain()
-4. WinMain wywołuje setup(), potem uruchamia pętlę komunikatów
-5. W każdym cyklu pętli wywoływana jest loop()
-6. WM_QUIT kończy pętlę i zamyka aplikację
+1. Global object `_core` is created automatically
+2. Core constructor calls init()
+3. Windows calls WinMain()
+4. WinMain calls setup(), then starts the message loop
+5. loop() is called in each message loop cycle
+6. WM_QUIT ends the loop and closes the application
 ```
 
-## Klasa `Core`
+## Class `Core`
 
 ```cpp
 class Core {
 public:
-    HINSTANCE hInstance;       // Uchwyt instancji aplikacji
-    HINSTANCE hPrevInstance;   // Uchwyt poprzedniej instancji (zawsze NULL)
-    LPSTR     lpCmdLine;      // Argumenty wiersza poleceń
-    int       nCmdShow;       // Tryb wyświetlania okna (SW_SHOW, etc.)
+    HINSTANCE hInstance;       // Application instance handle
+    HINSTANCE hPrevInstance;   // Previous instance handle (always NULL)
+    LPSTR     lpCmdLine;      // Command line arguments
+    int       nCmdShow;       // Window display mode (SW_SHOW, etc.)
     
-    Core();                   // Konstruktor — wywołuje init()
+    Core();                   // Constructor — calls init()
 };
 
-extern Core _core;            // Globalny obiekt — dostępny wszędzie
+extern Core _core;            // Global object — accessible everywhere
 ```
 
-## Funkcje callback
+## Callback Functions
 
-Wszystkie trzy funkcje są opcjonalne (oznaczone `__weak`). Jeśli ich nie zdefiniujesz, użyte zostaną puste implementacje domyślne.
+All three functions are optional (marked `__weak`). If not defined, empty default implementations are used.
 
 ### `void init()`
 
-Wywoływana w konstruktorze `Core`, **przed** `WinMain`. Służy do bardzo wczesnej inicjalizacji.
+Called in the `Core` constructor, **before** `WinMain`. Used for very early initialization.
 
 ```cpp
 void init() {
-    // np. konfiguracja zmiennych globalnych
+    // e.g. configure global variables
 }
 ```
 
 ### `void setup()`
 
-Wywoływana raz, na początku `WinMain`, **przed** pętlą komunikatów. Idealne miejsce na:
-- Tworzenie okien
-- Dodawanie komponentów UI
-- Nawiązywanie połączeń (Serial, BLE)
+Called once, at the beginning of `WinMain`, **before** the message loop. Ideal for:
+- Creating windows
+- Adding UI components
+- Establishing connections (Serial, BLE)
 
 ```cpp
 void setup() {
     SimpleWindow* window = new SimpleWindow(800, 600, "My App", 0);
     window->init();
-    // ... dodawanie komponentów
+    // ... add components
 }
 ```
 
 ### `void loop()`
 
-Wywoływana w każdym cyklu pętli komunikatów, **po** przetworzeniu wiadomości Windows.
+Called in each message loop cycle, **after** processing a Windows message.
 
 ```cpp
 void loop() {
-    // aktualizacja stanu, polling czujników, itp.
+    // update state, poll sensors, etc.
 }
 ```
 
-> **Uwaga:** `loop()` jest wywoływana po każdym `DispatchMessage()`, nie w stałych interwałach czasowych. Częstotliwość zależy od ilości komunikatów w kolejce.
+> **Note:** `loop()` is called after each `DispatchMessage()`, not at fixed time intervals. Frequency depends on the number of messages in the queue.
 
-## Pętla komunikatów (internals)
+## Message Loop (internals)
 
 ```cpp
 int WINAPI WinMain(HINSTANCE hInstance, ...) {
@@ -96,19 +96,19 @@ int WINAPI WinMain(HINSTANCE hInstance, ...) {
 }
 ```
 
-## Dostęp do instancji
+## Accessing the Instance
 
-Globalny obiekt `_core` jest dostępny z dowolnego pliku:
+The global object `_core` is accessible from any file:
 
 ```cpp
 #include <Core.h>
 
-void mojaFunkcja() {
-    HINSTANCE hInst = _core.hInstance;  // Potrzebne np. do CreateWindow
+void myFunction() {
+    HINSTANCE hInst = _core.hInstance;  // Needed e.g. for CreateWindow
 }
 ```
 
-## Przykład kompletnej aplikacji
+## Complete Application Example
 
 ```cpp
 #include <Core.h>
@@ -120,7 +120,7 @@ Label* label;
 int counter = 0;
 
 void init() {
-    // Wczesna inicjalizacja — opcjonalna
+    // Early initialization — optional
 }
 
 void setup() {
@@ -132,7 +132,7 @@ void setup() {
 }
 
 void loop() {
-    // UWAGA: loop() jest zależna od komunikatów Windows
-    // Dla operacji cyklicznych lepiej użyć SetTimer w WinAPI
+    // NOTE: loop() depends on Windows messages
+    // For periodic operations prefer SetTimer in WinAPI
 }
 ```

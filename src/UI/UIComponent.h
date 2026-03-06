@@ -16,6 +16,9 @@ public:
     // Opcjonalne metody obsługi zdarzeń
     virtual void handleClick() {}
     virtual void handleSelection() {}
+
+    // Owner-draw rendering (return true if handled)
+    virtual bool handleDrawItem(DRAWITEMSTRUCT*) { return false; }
 };
 
 #endif // UI_COMPONENT_H

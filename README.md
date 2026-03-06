@@ -1,6 +1,6 @@
 # JQB_WindowsLib
 
-**Biblioteka C++ do tworzenia natywnych aplikacji Windows (WinAPI) w stylu Arduino-like.**
+**C++ library for building native Windows desktop applications (WinAPI) with Arduino-like programming style.**
 
 [![License: GPL-3.0](https://img.shields.io/badge/License-GPL--3.0-blue.svg)](https://www.gnu.org/licenses/gpl-3.0)
 [![Platform: Windows](https://img.shields.io/badge/Platform-Windows-0078d7.svg)]()
@@ -8,60 +8,61 @@
 
 ---
 
-## Spis treści
+## Table of Contents
 
-- [Opis](#opis)
-- [Architektura](#architektura)
+- [Overview](#overview)
+- [Architecture](#architecture)
 - [Quick Start](#quick-start)
-- [Instalacja](#instalacja)
-- [Struktura projektu](#struktura-projektu)
-- [Komponenty UI](#komponenty-ui)
-- [Moduły IO](#moduły-io)
-- [Narzędzia (Util)](#narzędzia-util)
-- [Cykl życia aplikacji](#cykl-życia-aplikacji)
-- [Kompletny przykład](#kompletny-przykład)
+- [Installation](#installation)
+- [Project Structure](#project-structure)
+- [UI Components](#ui-components)
+- [IO Modules](#io-modules)
+- [Utilities](#utilities)
+- [Application Lifecycle](#application-lifecycle)
+- [Complete Example](#complete-example)
 - [API Reference](#api-reference)
 - [FAQ](#faq)
 
 ---
 
-## Opis
+## Overview
 
-**JQB_WindowsLib** to biblioteka upraszczająca tworzenie natywnych aplikacji desktopowych Windows z GUI. Inspirowana stylem Arduino (`setup()` / `loop()`), ukrywa złożoność WinAPI za prostym, obiektowym interfejsem.
+**JQB_WindowsLib** simplifies the creation of native Windows desktop applications with GUI. Inspired by the Arduino programming style (`setup()` / `loop()`), it hides WinAPI complexity behind a simple, object-oriented interface.
 
-### Kluczowe cechy
+### Key Features
 
-| Cecha | Opis |
-|-------|------|
-| **Arduino-like API** | Funkcje `init()`, `setup()`, `loop()` — znany model programowania |
-| **Gotowe komponenty UI** | 12 komponentów: okna, przyciski, etykiety, wykresy, zakładki... |
-| **Komunikacja IO** | Serial (COM), Bluetooth Low Energy (BLE), USB HID |
-| **Unicode / UTF-8** | Pełne wsparcie dla polskich znaków i Unicode |
-| **Zarządzanie konfiguracją** | Zapis/odczyt ustawień w formacie INI |
-| **PlatformIO Native** | Budowanie przez PlatformIO (`platform = native`) |
-| **Statyczne linkowanie** | Wynikowy `.exe` nie wymaga dodatkowych DLL |
+| Feature | Description |
+|---------|-------------|
+| **Arduino-like API** | `init()`, `setup()`, `loop()` functions — familiar programming model |
+| **Ready-made UI components** | 13 components: windows, buttons, labels, charts, tabs, overlay... |
+| **IO communication** | Serial (COM), Bluetooth Low Energy (BLE), USB HID |
+| **Unicode / UTF-8** | Full support for international characters and Unicode |
+| **Configuration management** | INI-style key=value settings save/load |
+| **PlatformIO Native** | Build via PlatformIO (`platform = native`) |
+| **Static linking** | Resulting `.exe` requires no additional DLLs |
 
 ---
 
-## Architektura
+## Architecture
 
 ```
 ┌─────────────────────────────────────────────────────┐
-│                    Twoja aplikacja                    │
+│                  Your Application                    │
 │              init() → setup() → loop()               │
 ├─────────────────────────────────────────────────────┤
 │                   JQB_WindowsLib                     │
 │  ┌──────────┐  ┌──────────┐  ┌───────────────────┐  │
 │  │   Core    │  │    UI    │  │        IO         │  │
 │  │ WinMain  │  │ Window   │  │ Serial (COM)      │  │
-│  │ MsgLoop  │  │ Button   │  │ BLE (Bluetooth)   │  │
-│  │          │  │ Label    │  │ HID (USB HID)     │  │
-│  │          │  │ Select   │  ├───────────────────┤  │
-│  │          │  │ TextArea │  │       Util        │  │
-│  │          │  │ Chart    │  │ StringUtils       │  │
-│  │          │  │ CheckBox │  │ ConfigManager     │  │
-│  │          │  │ InputField│ │                   │  │
-│  │          │  │ ImageView│  │                   │  │
+│  │ MsgLoop  │  │ Overlay  │  │ BLE (Bluetooth)   │  │
+│  │          │  │ Button   │  │ HID (USB HID)     │  │
+│  │          │  │ Label    │  ├───────────────────┤  │
+│  │          │  │ Select   │  │       Util        │  │
+│  │          │  │ TextArea │  │ StringUtils       │  │
+│  │          │  │ Chart    │  │ ConfigManager     │  │
+│  │          │  │ CheckBox │  │ DataLogger        │  │
+│  │          │  │ InputField│ │ HotkeyManager     │  │
+│  │          │  │ ImageView│  │ Statistics        │  │
 │  │          │  │ Progress │  │                   │  │
 │  │          │  │ TabCtrl  │  │                   │  │
 │  │          │  │ ValueDisp│  │                   │  │
@@ -76,7 +77,7 @@
 
 ## Quick Start
 
-### Minimalny program — okno z przyciskiem
+### Minimal program — window with a button
 
 ```cpp
 #include <Core.h>
@@ -88,25 +89,25 @@ SimpleWindow* window;
 Label* label;
 
 void setup() {
-    window = new SimpleWindow(400, 300, "Moja aplikacja", 0);
+    window = new SimpleWindow(400, 300, "My App", 0);
     window->init();
 
-    label = new Label(20, 20, 360, 30, L"Witaj świecie!");
+    label = new Label(20, 20, 360, 30, L"Hello World!");
     window->add(label);
 
-    window->add(new Button(20, 60, 120, 35, "Kliknij mnie",
+    window->add(new Button(20, 60, 120, 35, "Click me",
         [](Button* btn) {
-            label->setText(L"Kliknięto przycisk!");
+            label->setText(L"Button clicked!");
         }
     ));
 }
 
 void loop() {
-    // Wywoływane cyklicznie w pętli komunikatów
+    // Called cyclically in the message loop
 }
 ```
 
-### Konfiguracja `platformio.ini`
+### `platformio.ini` configuration
 
 ```ini
 [env:app]
@@ -115,158 +116,166 @@ lib_deps =
     https://github.com/JAQUBA/JQB_WindowsLib.git
 ```
 
-> **Uwaga:** Biblioteka automatycznie dodaje wymagane flagi: `-std=c++17`, `-DUNICODE`, `-D_UNICODE`, statyczne linkowanie, `subsystem:windows` oraz biblioteki `gdi32`/`comctl32`. Nie musisz ich deklarować ręcznie.
+> **Note:** The library automatically adds the required flags: `-std=c++17`, `-DUNICODE`, `-D_UNICODE`, static linking, `subsystem:windows`, and the `gdi32`/`comctl32` libraries. You do not need to declare them manually.
 
 ---
 
-## Instalacja
+## Installation
 
-### Przez PlatformIO (zalecane)
+### Via PlatformIO (recommended)
 
-Dodaj do `platformio.ini`:
+Add to `platformio.ini`:
 
 ```ini
 lib_deps =
     https://github.com/JAQUBA/JQB_WindowsLib.git
 ```
 
-### Ręcznie
+### Manual
 
-1. Sklonuj repo:
+1. Clone the repo:
    ```bash
    git clone https://github.com/JAQUBA/JQB_WindowsLib.git
    ```
-2. Umieść w katalogu `lib/` projektu PlatformIO lub wskaż ścieżkę w `lib_deps`.
+2. Place in the `lib/` directory of your PlatformIO project or specify the path in `lib_deps`.
 
-### Wymagania
+### Requirements
 
-- **System:** Windows 10+ (x64)
-- **Kompilator:** MinGW GCC (MinGW-w64 lub MinGW.org) — dostarczany przez PlatformIO
-- **C++ Standard:** C++17 (dodawany automatycznie przez bibliotekę)
+- **OS:** Windows 10+ (x64)
+- **Compiler:** MinGW GCC (MinGW-w64 or MinGW.org) — provided by PlatformIO
+- **C++ Standard:** C++17 (added automatically by the library)
 - **PlatformIO Core:** 6.x+
 
 ---
 
-## Struktura projektu
+## Project Structure
 
 ```
 JQB_WindowsLib/
-├── library.json              # Manifest PlatformIO
+├── library.json              # PlatformIO manifest
 ├── scripts/
-│   └── compile_resources.py  # Auto-konfiguracja buildu + kompilacja zasobów
+│   └── compile_resources.py  # Build auto-configuration + resource compilation
 └── src/
-    ├── Core.h / Core.cpp     # Rdzeń — WinMain, pętla komunikatów
-    ├── UI/                   # Komponenty interfejsu użytkownika
-    │   ├── UIComponent.h     #   Interfejs bazowy (abstrakcyjny)
-    │   ├── SimpleWindow/     #   Okno główne
-    │   ├── Button/           #   Przycisk (click + long-press)
-    │   ├── Label/            #   Etykieta tekstowa
-    │   ├── Select/           #   Lista rozwijana (ComboBox)
-    │   ├── TextArea/         #   Pole tekstowe wieloliniowe
-    │   ├── InputField/       #   Pole edycji jednoliniowe
-    │   ├── CheckBox/         #   Pole wyboru
-    │   ├── ProgressBar/      #   Pasek postępu
-    │   ├── Chart/            #   Wykres czasu rzeczywistego
-    │   ├── ValueDisplay/     #   Wyświetlacz wartości (styl LCD)
-    │   ├── ImageView/        #   Wyświetlanie obrazów (BMP/PNG/JPG)
-    │   └── TabControl/       #   Kontrolka zakładek
-    ├── IO/                   # Komunikacja
-    │   ├── Serial/           #   Port szeregowy (COM)
+    ├── Core.h / Core.cpp     # Core — WinMain, message loop
+    ├── UI/                   # User interface components
+    │   ├── UIComponent.h     #   Base interface (abstract)
+    │   ├── SimpleWindow/     #   Main window (singleton)
+    │   ├── OverlayWindow/    #   Overlay window (always-on-top, double-buffered GDI)
+    │   ├── Button/           #   Button (click + long-press)
+    │   ├── Label/            #   Text label (Unicode)
+    │   ├── Select/           #   Dropdown list (ComboBox)
+    │   ├── TextArea/         #   Multiline text field (readonly, font/color styling)
+    │   ├── InputField/       #   Single-line edit field
+    │   ├── CheckBox/         #   Checkbox
+    │   ├── ProgressBar/      #   Progress bar (custom colors with visual styles bypass)
+    │   ├── Chart/            #   Real-time chart
+    │   ├── ValueDisplay/     #   Value display (LCD style)
+    │   ├── ImageView/        #   Image display (BMP/PNG/JPG)
+    │   └── TabControl/       #   Tab control
+    ├── IO/                   # Communication
+    │   ├── Serial/           #   Serial port (COM)
     │   ├── BLE/              #   Bluetooth Low Energy
     │   └── HID/              #   USB HID (Feature Reports)
-    └── Util/                 # Narzędzia
-        ├── StringUtils.*     #   Konwersje UTF-8 ↔ UTF-16
-        └── ConfigManager.*   #   Zapis/odczyt konfiguracji INI
+    └── Util/                 # Utilities
+        ├── StringUtils.*     #   UTF-8 ↔ UTF-16 conversions
+        ├── ConfigManager.*   #   INI configuration save/load
+        ├── DataLogger.*      #   CSV logger with auto-timestamp
+        ├── HotkeyManager.*   #   Global keyboard shortcuts (WH_KEYBOARD_LL hook)
+        └── Statistics.h      #   Header-only MIN/MAX/AVG/PEAK statistics
 ```
 
 ---
 
-## Komponenty UI
+## UI Components
 
-Wszystkie komponenty dziedziczą z `UIComponent` i implementują:
-- `create(HWND parent)` — tworzy natywną kontrolkę WinAPI
-- `getId()` — zwraca unikalny identyfikator
-- `getHandle()` — zwraca uchwyt HWND
+All components inherit from `UIComponent` and implement:
+- `create(HWND parent)` — creates the native WinAPI control
+- `getId()` — returns a unique identifier
+- `getHandle()` — returns the HWND handle
 
-### Podsumowanie komponentów
+### Component Summary
 
-| Komponent | Opis | Dokumentacja |
-|-----------|------|--------------|
-| **SimpleWindow** | Okno główne aplikacji | [docs/SimpleWindow.md](docs/SimpleWindow.md) |
-| **Button** | Przycisk z onClick i onLongClick | [docs/Button.md](docs/Button.md) |
-| **Label** | Etykieta tekstowa (Unicode) | [docs/Label.md](docs/Label.md) |
-| **Select** | Lista rozwijana (ComboBox) | [docs/Select.md](docs/Select.md) |
-| **TextArea** | Wieloliniowe pole tekstowe (readonly) | [docs/TextArea.md](docs/TextArea.md) |
-| **InputField** | Pole edycji z placeholder i walidacją | [docs/InputField.md](docs/InputField.md) |
-| **CheckBox** | Pole wyboru z callbackiem onChange | [docs/CheckBox.md](docs/CheckBox.md) |
-| **ProgressBar** | Pasek postępu z trybem Marquee | [docs/ProgressBar.md](docs/ProgressBar.md) |
-| **Chart** | Wykres pomiarów w czasie rzeczywistym | [docs/Chart.md](docs/Chart.md) |
-| **ValueDisplay** | Wyświetlacz wartości w stylu LCD | [docs/ValueDisplay.md](docs/ValueDisplay.md) |
-| **ImageView** | Obrazy z pliku, zasobów lub pamięci | [docs/ImageView.md](docs/ImageView.md) |
-| **TabControl** | Kontrolka zakładek z panelami | [docs/TabControl.md](docs/TabControl.md) |
-
----
-
-## Moduły IO
-
-| Moduł | Opis | Dokumentacja |
-|-------|------|--------------|
-| **Serial** | Komunikacja przez port COM (RS-232) | [docs/Serial.md](docs/Serial.md) |
-| **BLE** | Bluetooth Low Energy — skanowanie i komunikacja | [docs/BLE.md](docs/BLE.md) |
-| **HID** | USB HID — Feature Reports, enumeracja urządzeń | [docs/HID.md](docs/HID.md) |
+| Component | Description | Docs |
+|-----------|-------------|------|
+| **SimpleWindow** | Main application window (singleton) | [docs/SimpleWindow.md](docs/SimpleWindow.md) |
+| **OverlayWindow** | Always-on-top overlay (subclassable, double-buffered GDI) | [docs/OverlayWindow.md](docs/OverlayWindow.md) |
+| **Button** | Button with onClick and onLongClick | [docs/Button.md](docs/Button.md) |
+| **Label** | Text label (Unicode, font/color styling) | [docs/Label.md](docs/Label.md) |
+| **Select** | Dropdown list (ComboBox) | [docs/Select.md](docs/Select.md) |
+| **TextArea** | Multiline text field (readonly, font/color styling) | [docs/TextArea.md](docs/TextArea.md) |
+| **InputField** | Edit field with placeholder and validation | [docs/InputField.md](docs/InputField.md) |
+| **CheckBox** | Checkbox with onChange callback | [docs/CheckBox.md](docs/CheckBox.md) |
+| **ProgressBar** | Progress bar with Marquee mode and custom colors | [docs/ProgressBar.md](docs/ProgressBar.md) |
+| **Chart** | Real-time measurement chart | [docs/Chart.md](docs/Chart.md) |
+| **ValueDisplay** | LCD-style value display | [docs/ValueDisplay.md](docs/ValueDisplay.md) |
+| **ImageView** | Images from file, resources, or memory | [docs/ImageView.md](docs/ImageView.md) |
+| **TabControl** | Tab control with panels | [docs/TabControl.md](docs/TabControl.md) |
 
 ---
 
-## Narzędzia (Util)
+## IO Modules
 
-| Moduł | Opis | Dokumentacja |
-|-------|------|--------------|
-| **StringUtils** | Konwersje UTF-8 ↔ UTF-16/ANSI | [docs/StringUtils.md](docs/StringUtils.md) |
-| **ConfigManager** | Menedżer konfiguracji (format key=value) | [docs/ConfigManager.md](docs/ConfigManager.md) |
+| Module | Description | Docs |
+|--------|-------------|------|
+| **Serial** | COM port communication (RS-232) | [docs/Serial.md](docs/Serial.md) |
+| **BLE** | Bluetooth Low Energy — scanning and communication | [docs/BLE.md](docs/BLE.md) |
+| **HID** | USB HID — Feature Reports, device enumeration | [docs/HID.md](docs/HID.md) |
 
 ---
 
-## Cykl życia aplikacji
+## Utilities
+
+| Module | Description | Docs |
+|--------|-------------|------|
+| **StringUtils** | UTF-8 ↔ UTF-16/ANSI conversions | [docs/StringUtils.md](docs/StringUtils.md) |
+| **ConfigManager** | Configuration manager (key=value format) | [docs/ConfigManager.md](docs/ConfigManager.md) |
+| **DataLogger** | CSV logger with auto-timestamp filenames | [docs/DataLogger.md](docs/DataLogger.md) |
+| **HotkeyManager** | Global keyboard shortcuts with settings dialog | [docs/HotkeyManager.md](docs/HotkeyManager.md) |
+| **Statistics** | Header-only MIN/MAX/AVG/PEAK statistics | [docs/Statistics.md](docs/Statistics.md) |
+
+---
+
+## Application Lifecycle
 
 ```
 Program Start
      │
      ▼
-  Core() constructor   ← automatyczny, tworzy globalny obiekt _core
+  Core() constructor   ← automatic, creates the global _core object
      │
      ▼
-  init()              ← __weak — można nadpisać; wywoływana w konstruktorze Core
+  init()              ← __weak — can be overridden; called in Core constructor
      │
      ▼
-  WinMain()           ← punkt wejścia Windows
+  WinMain()           ← Windows entry point
      │
      ▼
-  setup()             ← tworzenie okien, komponentów, połączeń
+  setup()             ← create windows, components, connections
      │
      ▼
-  ┌─── Pętla komunikatów (GetMessage → TranslateMessage → DispatchMessage) ───┐
-  │                                                                            │
-  │   loop()  ← wywoływana po każdym cyklu pętli komunikatów                 │
-  │                                                                            │
-  └────────────────────────── WM_QUIT kończy pętlę ──────────────────────────┘
+  ┌─── Message loop (GetMessage → TranslateMessage → DispatchMessage) ───┐
+  │                                                                       │
+  │   loop()  ← called after each message loop cycle                     │
+  │                                                                       │
+  └────────────────────────── WM_QUIT ends the loop ─────────────────────┘
      │
      ▼
   Program End
 ```
 
-### Trzy funkcje callback (opcjonalne, `__weak`)
+### Three callback functions (optional, `__weak`)
 
-| Funkcja | Kiedy | Typowe zastosowanie |
-|---------|-------|---------------------|
-| `init()` | Przed `WinMain`, w konstruktorze `Core` | Wczesna inicjalizacja |
-| `setup()` | Po `WinMain`, przed pętlą komunikatów | Tworzenie GUI, nawiązanie połączeń |
-| `loop()` | W każdym cyklu pętli komunikatów | Aktualizacja stanu, polling |
+| Function | When | Typical use |
+|----------|------|-------------|
+| `init()` | Before `WinMain`, in `Core` constructor | Early initialization |
+| `setup()` | After `WinMain`, before message loop | Create GUI, establish connections |
+| `loop()` | In each message loop cycle | Update state, polling |
 
 ---
 
-## Kompletny przykład
+## Complete Example
 
-### Aplikacja z oknem, przyciskami, polem Select i komunikacją Serial
+### Application with window, buttons, Select, and Serial communication
 
 ```cpp
 #include <Core.h>
@@ -284,27 +293,27 @@ TextArea* textLog;
 Serial    serial;
 
 void setup() {
-    // Inicjalizacja okna
+    // Window initialization
     window = new SimpleWindow(600, 400, "Serial Monitor", 0);
     window->init();
 
     // Status
-    lblStatus = new Label(20, 10, 560, 20, L"Rozłączono");
+    lblStatus = new Label(20, 10, 560, 20, L"Disconnected");
     window->add(lblStatus);
 
-    // Wybór portu COM
+    // COM port selection
     serial.init();
-    selPort = new Select(20, 40, 200, 25, "Wybierz port", [](Select* sel) {
+    selPort = new Select(20, 40, 200, 25, "Select port", [](Select* sel) {
         serial.setPort(sel->getText());
     });
-    // Wypełnij listę portów
+    // Populate port list
     for (const auto& port : serial.getAvailablePorts()) {
         selPort->addItem(port.c_str());
     }
     window->add(selPort);
 
-    // Przycisk Połącz
-    window->add(new Button(230, 40, 100, 25, "Połącz", [](Button* btn) {
+    // Connect button
+    window->add(new Button(230, 40, 100, 25, "Connect", [](Button* btn) {
         if (serial.isConnected()) {
             serial.disconnect();
         } else {
@@ -312,27 +321,27 @@ void setup() {
         }
     }));
 
-    // Log komunikacji
+    // Communication log
     textLog = new TextArea(20, 80, 560, 280);
     window->add(textLog);
 
-    // Callback odbierania danych
+    // Data receive callback
     serial.onReceive([](const std::vector<uint8_t>& data) {
         std::string text(data.begin(), data.end());
         textLog->append(text);
     });
 
     serial.onConnect([]() {
-        lblStatus->setText(L"Połączono!");
+        lblStatus->setText(L"Connected!");
     });
 
     serial.onDisconnect([]() {
-        lblStatus->setText(L"Rozłączono");
+        lblStatus->setText(L"Disconnected");
     });
 }
 
 void loop() {
-    // pętla komunikatów obsługuje zdarzenia automatycznie
+    // message loop handles events automatically
 }
 ```
 
@@ -340,65 +349,69 @@ void loop() {
 
 ## API Reference
 
-Pełna dokumentacja API każdego komponentu znajduje się w katalogu [docs/](docs/):
+Full API documentation for each component is available in the [docs/](docs/) directory:
 
-### Poradniki
+### Guides
 
-- **[Quick Start](docs/QuickStart.md)** — szybkie uruchomienie pierwszej aplikacji
-- **[Przykłady](docs/examples/)** — 7 gotowych aplikacji demonstracyjnych
+- **[Quick Start](docs/QuickStart.md)** — get your first application running
+- **[Examples](docs/examples/)** — 7 complete demo applications
 
-### Komponenty
+### Components
 
-- [Core](docs/Core.md) — rdzeń aplikacji
-- [SimpleWindow](docs/SimpleWindow.md) — okno główne
-- [Button](docs/Button.md) — przycisk
-- [Label](docs/Label.md) — etykieta
-- [Select](docs/Select.md) — lista rozwijana
-- [TextArea](docs/TextArea.md) — pole tekstowe
-- [InputField](docs/InputField.md) — pole edycji
-- [CheckBox](docs/CheckBox.md) — pole wyboru
-- [ProgressBar](docs/ProgressBar.md) — pasek postępu
-- [Chart](docs/Chart.md) — wykres
-- [ValueDisplay](docs/ValueDisplay.md) — wyświetlacz wartości
-- [ImageView](docs/ImageView.md) — wyświetlacz obrazów
-- [TabControl](docs/TabControl.md) — zakładki
+- [Core](docs/Core.md) — application core
+- [SimpleWindow](docs/SimpleWindow.md) — main window
+- [OverlayWindow](docs/OverlayWindow.md) — overlay window
+- [Button](docs/Button.md) — button
+- [Label](docs/Label.md) — label
+- [Select](docs/Select.md) — dropdown list
+- [TextArea](docs/TextArea.md) — text field
+- [InputField](docs/InputField.md) — edit field
+- [CheckBox](docs/CheckBox.md) — checkbox
+- [ProgressBar](docs/ProgressBar.md) — progress bar
+- [Chart](docs/Chart.md) — chart
+- [ValueDisplay](docs/ValueDisplay.md) — value display
+- [ImageView](docs/ImageView.md) — image display
+- [TabControl](docs/TabControl.md) — tabs
 
 ### IO & Util
 
-- [Serial](docs/Serial.md) — komunikacja COM
+- [Serial](docs/Serial.md) — COM communication
 - [BLE](docs/BLE.md) — Bluetooth Low Energy
 - [HID](docs/HID.md) — USB HID (Feature Reports)
-- [StringUtils](docs/StringUtils.md) — konwersje stringów
-- [ConfigManager](docs/ConfigManager.md) — menedżer konfiguracji
+- [StringUtils](docs/StringUtils.md) — string conversions
+- [ConfigManager](docs/ConfigManager.md) — configuration manager
+- [DataLogger](docs/DataLogger.md) — CSV data logger
+- [HotkeyManager](docs/HotkeyManager.md) — keyboard shortcuts
+- [Statistics](docs/Statistics.md) — MIN/MAX/AVG/PEAK statistics
 
 ---
 
 ## FAQ
 
-### Jak dodać ikonę do aplikacji?
+### How do I add an icon to my application?
 
-1. Stwórz plik `resources.rc` w katalogu głównym projektu:
+1. Create a `resources.rc` file in the project root:
    ```rc
    1 ICON "icon.ico"
    ```
-2. Umieść plik `icon.ico` obok `resources.rc`.
-3. Skrypt `compile_resources.py` automatycznie skompiluje zasoby podczas budowania.
-4. Użyj `SimpleWindow(width, height, "Tytuł", 1)` — ostatni parametr to ID ikony.
+2. Place the `icon.ico` file next to `resources.rc`.
+3. The `compile_resources.py` script will automatically compile resources during build.
+4. Use `SimpleWindow(width, height, "Title", 1)` — the last parameter is the icon resource ID.
 
-### Jak obsługiwać polskie znaki?
+### How do I handle Unicode / international characters?
 
-Biblioteka w pełni obsługuje Unicode. Używaj:
-- `Label` przyjmuje `const wchar_t*` — prefiks `L`: `L"Zażółć gęślą jaźń"`
-- `Button`, `Select` i inne przyjmują `const char*` w UTF-8
-- `StringUtils::utf8ToWide()` i `StringUtils::wideToUtf8()` do konwersji
+The library fully supports Unicode. Use:
+- `Label` accepts `const wchar_t*` — prefix `L`: `L"Ω µ °C"`
+- `Button`, `Select`, and others accept `const char*` in UTF-8
+- `StringUtils::utf8ToWide()` and `StringUtils::wideToUtf8()` for conversion
 
-### Czy mogę użyć bez PlatformIO?
+### Can I use it without PlatformIO?
 
-Tak — biblioteka to czysty C++ z WinAPI. Wymaga linkowania: `gdi32`, `comctl32`. Moduły IO dynamicznie ładują: `setupapi`, `gdiplus`, `shlwapi`, `bthprops`, `hid`. Kompilacja: `g++ -std=c++17 -DUNICODE -D_UNICODE -mwindows -lgdi32 -lcomctl32 ...`
+Yes — the library is pure C++ with WinAPI. Requires linking: `gdi32`, `comctl32`. IO modules dynamically load: `setupapi`, `gdiplus`, `shlwapi`, `bthprops`, `hid`. Compilation: `g++ -std=c++17 -DUNICODE -D_UNICODE -mwindows -lgdi32 -lcomctl32 ...`
 
-### Jak stworzyć własny komponent UI?
+### How do I create a custom UI component?
 
-Dziedzicz z `UIComponent`:
+Inherit from `UIComponent`:
 ```cpp
 class MyWidget : public UIComponent {
 public:
@@ -413,8 +426,8 @@ private:
 
 ---
 
-## Licencja
+## License
 
 [GPL-3.0-or-later](https://www.gnu.org/licenses/gpl-3.0.html)
 
-**Autor:** [JAQUBA](https://github.com/JAQUBA)
+**Author:** [JAQUBA](https://github.com/JAQUBA)

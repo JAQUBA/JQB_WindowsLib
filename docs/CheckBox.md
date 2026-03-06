@@ -1,12 +1,12 @@
-# CheckBox — Pole wyboru
+# CheckBox — Checkbox
 
 > `#include <UI/CheckBox/CheckBox.h>`
 
-## Opis
+## Description
 
-Pole wyboru (checkbox) z callbackiem `onChange`. Stan zmienia się automatycznie przy kliknięciu (styl `BS_AUTOCHECKBOX`).
+Checkbox with `onChange` callback. State toggles automatically on click (`BS_AUTOCHECKBOX` style).
 
-## Konstruktor
+## Constructor
 
 ```cpp
 CheckBox(int x, int y, int width, int height, const char* text,
@@ -14,56 +14,56 @@ CheckBox(int x, int y, int width, int height, const char* text,
          std::function<void(CheckBox*, bool)> onChange = nullptr);
 ```
 
-| Parametr | Typ | Opis |
-|----------|-----|------|
-| `x`, `y` | `int` | Pozycja |
-| `width`, `height` | `int` | Rozmiar (w tym tekst obok) |
-| `text` | `const char*` | Tekst etykiety (UTF-8) |
-| `checked` | `bool` | Stan początkowy |
-| `onChange` | `function<void(CheckBox*, bool)>` | Callback ze stanem |
+| Parameter | Type | Description |
+|-----------|------|-------------|
+| `x`, `y` | `int` | Position |
+| `width`, `height` | `int` | Size (including label text) |
+| `text` | `const char*` | Label text (UTF-8) |
+| `checked` | `bool` | Initial state |
+| `onChange` | `function<void(CheckBox*, bool)>` | Callback with state |
 
-## Metody
+## Methods
 
-| Metoda | Zwraca | Opis |
-|--------|--------|------|
-| `create(HWND parent)` | `void` | Tworzy kontrolkę |
-| `setText(const char* text)` | `void` | Zmienia tekst |
-| `getText()` | `std::string` | Pobiera tekst |
-| `setChecked(bool checked)` | `void` | Ustawia stan programowo |
-| `isChecked()` | `bool` | Sprawdza stan |
-| `handleClick()` | `void` | Obsługa kliknięcia |
-| `getHandle()` | `HWND` | Uchwyt kontrolki |
-| `getId()` | `int` | Unikalny ID (auto od 3000) |
+| Method | Returns | Description |
+|--------|---------|-------------|
+| `create(HWND parent)` | `void` | Creates the control |
+| `setText(const char* text)` | `void` | Changes text |
+| `getText()` | `std::string` | Gets text |
+| `setChecked(bool checked)` | `void` | Sets state programmatically |
+| `isChecked()` | `bool` | Checks state |
+| `handleClick()` | `void` | Click handler |
+| `getHandle()` | `HWND` | Control handle |
+| `getId()` | `int` | Unique ID (auto from 3000) |
 
-## Przykłady
+## Examples
 
-### Prosty checkbox
+### Simple Checkbox
 
 ```cpp
-window->add(new CheckBox(20, 50, 200, 25, "Włącz powiadomienia", true,
+window->add(new CheckBox(20, 50, 200, 25, "Enable notifications", true,
     [](CheckBox* cb, bool checked) {
         if (checked) {
-            // Włączono
+            // Enabled
         } else {
-            // Wyłączono
+            // Disabled
         }
     }
 ));
 ```
 
-### Programowe sterowanie
+### Programmatic Control
 
 ```cpp
-CheckBox* cbAuto = new CheckBox(20, 50, 200, 25, "Tryb automatyczny", false);
+CheckBox* cbAuto = new CheckBox(20, 50, 200, 25, "Auto mode", false);
 window->add(cbAuto);
 
-// Później:
-cbAuto->setChecked(true);     // Zaznacz
-bool state = cbAuto->isChecked();  // Odczytaj stan
+// Later:
+cbAuto->setChecked(true);          // Check
+bool state = cbAuto->isChecked();  // Read state
 ```
 
-## Uwagi
+## Notes
 
-- ID zaczynają się od **3000**
-- Styl: `BS_AUTOCHECKBOX` — Windows automatycznie przełącza stan
-- `isChecked()` odczytuje rzeczywisty stan kontrolki przez `BM_GETCHECK`
+- IDs start at **3000**
+- Style: `BS_AUTOCHECKBOX` — Windows automatically toggles the state
+- `isChecked()` reads the actual control state via `BM_GETCHECK`

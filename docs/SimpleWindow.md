@@ -1,49 +1,49 @@
-# SimpleWindow — Okno główne aplikacji
+# SimpleWindow — Main Application Window
 
 > `#include <UI/SimpleWindow/SimpleWindow.h>`
 
-## Opis
+## Description
 
-`SimpleWindow` to główne okno aplikacji. Zarządza tworzeniem okna Windows, pętlą komunikatów i kolekcją komponentów UI. Obsługuje zdarzenia kliknięć, zmianę wyboru, powiadomienia kontrolek i timer dla długich naciśnięć przycisków.
+`SimpleWindow` is the main application window. It manages window creation, the message loop, and a collection of UI components. Handles click events, selection changes, control notifications, and a timer for button long-press detection.
 
-## Konstruktor
+## Constructor
 
 ```cpp
 SimpleWindow(int width, int height, const char* title, int iconId);
 ```
 
-| Parametr | Typ | Opis |
-|----------|-----|------|
-| `width` | `int` | Szerokość okna w pikselach (obszar klienta) |
-| `height` | `int` | Wysokość okna w pikselach (obszar klienta) |
-| `title` | `const char*` | Tytuł okna (UTF-8 — obsługuje polskie znaki) |
-| `iconId` | `int` | ID ikony z zasobów (`resources.rc`). Podaj `0` dla braku ikony. |
+| Parameter | Type | Description |
+|-----------|------|-------------|
+| `width` | `int` | Window width in pixels (client area) |
+| `height` | `int` | Window height in pixels (client area) |
+| `title` | `const char*` | Window title (UTF-8) |
+| `iconId` | `int` | Icon ID from resources (`resources.rc`). Pass `0` for no icon. |
 
-## Metody
+## Methods
 
 ### `bool init()`
 
-Rejestruje klasę okna, tworzy okno i wyświetla je. **Musi być wywołana po konstruktorze.**
+Registers the window class, creates the window, and shows it. **Must be called after the constructor.**
 
 ```cpp
-SimpleWindow* win = new SimpleWindow(800, 600, "Moja Apka", 1);
+SimpleWindow* win = new SimpleWindow(800, 600, "My App", 1);
 if (!win->init()) {
-    // Błąd tworzenia okna
+    // Window creation error
 }
 ```
 
-**Zwraca:** `true` jeśli okno zostało utworzone, `false` przy błędzie.
+**Returns:** `true` if the window was created, `false` on error.
 
 ### `void add(UIComponent* component)`
 
-Dodaje dowolny komponent UI do okna. Komponent jest automatycznie tworzony (`create()`) z uchwytem okna jako rodzicem.
+Adds any UI component to the window. The component is automatically created (`create()`) with the window handle as parent.
 
 ```cpp
 Button* btn = new Button(10, 10, 100, 30, "OK", [](Button*){});
 win->add(btn);
 ```
 
-### Przeciążenia `add()` (kompatybilność wsteczna)
+### `add()` Overloads (backward compatibility)
 
 ```cpp
 void add(Button* button);
@@ -56,36 +56,50 @@ void add(Chart* chart);
 
 ### `void close()`
 
-Zamyka okno — wysyła `WM_CLOSE`.
+Closes the window — sends `WM_CLOSE`.
 
 ```cpp
 win->close();
 ```
 
-## Zarządzanie pamięcią
+### Menu Support
 
-`SimpleWindow` posiada (*owns*) wszystkie dodane komponenty. Destruktor automatycznie zwalnia:
-- Wszystkie komponenty z wektora `m_components` (`delete`)
-- Okno Windows (`DestroyWindow`)
-- Wysyła `PostQuitMessage(0)` — kończy pętlę komunikatów
+```cpp
+void setMenu(HMENU menu);                              // Set menu bar
+void onMenuCommand(std::function<void(int)> callback);  // Menu command handler
+```
 
-> **Ważne:** Nie usuwaj ręcznie komponentów dodanych do okna!
+### Background Color
 
-## Obsługa zdarzeń (internals)
+```cpp
+void setBackgroundColor(COLORREF color);  // Changes window background (WM_ERASEBKGND)
+```
 
-`WindowProc` automatycznie obsługuje:
+## Memory Management
 
-| Komunikat | Obsługa |
-|-----------|---------|
+`SimpleWindow` **owns** all added components. The destructor automatically frees:
+- All components from the `m_components` vector (`delete`)
+- The Windows window (`DestroyWindow`)
+- Sends `PostQuitMessage(0)` — ends the message loop
+
+> **Important:** Do not manually delete components added to the window!
+
+## Event Handling (internals)
+
+`WindowProc` automatically handles:
+
+| Message | Handling |
+|---------|----------|
 | `WM_COMMAND` + `BN_CLICKED` | `component->handleClick()` |
 | `WM_COMMAND` + `BN_PUSHED` | `startButtonPress()` → long press |
 | `WM_COMMAND` + `CBN_SELCHANGE` | `component->handleSelection()` |
 | `WM_NOTIFY` + `TCN_SELCHANGE` | `component->handleSelection()` (TabControl) |
+| `WM_CTLCOLORSTATIC` | Custom colors for Label and TextArea |
 | `WM_TIMER` | `checkForLongPresses()` |
 | `WM_CLOSE` | `DestroyWindow()` |
 | `WM_DESTROY` | `PostQuitMessage(0)` |
 
-## Przykład
+## Example
 
 ```cpp
 #include <Core.h>
@@ -100,20 +114,23 @@ void setup() {
     window = new SimpleWindow(500, 350, "Demo Window", 0);
     window->init();
 
-    // Etykieta
-    window->add(new Label(20, 20, 200, 25, L"Wybierz opcję:"));
+    // Background color
+    window->setBackgroundColor(RGB(30, 30, 38));
 
-    // Lista rozwijana
-    Select* sel = new Select(20, 50, 200, 25, "Opcja 1", [](Select* s) {
-        // reakcja na zmianę wyboru
+    // Label
+    window->add(new Label(20, 20, 200, 25, L"Choose an option:"));
+
+    // Combo box
+    Select* sel = new Select(20, 50, 200, 25, "Option 1", [](Select* s) {
+        // react to selection change
     });
-    sel->addItem("Opcja 1");
-    sel->addItem("Opcja 2");
-    sel->addItem("Opcja 3");
+    sel->addItem("Option 1");
+    sel->addItem("Option 2");
+    sel->addItem("Option 3");
     window->add(sel);
 
-    // Przycisk zamykający
-    window->add(new Button(20, 100, 120, 35, "Zamknij", [](Button*) {
+    // Close button
+    window->add(new Button(20, 100, 120, 35, "Close", [](Button*) {
         window->close();
     }));
 }
@@ -121,8 +138,8 @@ void setup() {
 void loop() {}
 ```
 
-## Uwagi
+## Notes
 
-- Okno używa stylu `WS_OVERLAPPEDWINDOW` (z przyciskami minimalizacji, maksymalizacji, zamknięcia).
-- Rozmiar podany w konstruktorze to rozmiar **obszaru klienta** (client area). Rzeczywisty rozmiar okna jest większy o ramkę i pasek tytułowy (`AdjustWindowRect`).
-- Aktualnie wspierany jest **jeden obiekt** `SimpleWindow` (instancja singleton via `s_instance`).
+- Window uses `WS_OVERLAPPEDWINDOW` style (with minimize, maximize, close buttons).
+- The size given in the constructor is the **client area** size. The actual window size is larger by the frame and title bar (`AdjustWindowRect`).
+- Currently only **one** `SimpleWindow` instance is supported (singleton via `s_instance`). For additional windows use `OverlayWindow` or raw WinAPI with `GWLP_USERDATA`.

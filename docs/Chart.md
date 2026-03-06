@@ -1,100 +1,100 @@
-# Chart — Wykres czasu rzeczywistego
+# Chart — Real-time Chart
 
 > `#include <UI/Chart/Chart.h>`
 
-## Opis
+## Description
 
-Wykres liniowy czasu rzeczywistego z:
-- Automatycznym skalowaniem osi Y
-- Konfigurowalnym oknem czasowym osi X
-- Siatką, osiami i etykietami
-- Ograniczaniem częstotliwości odświeżania (rate limiting)
-- Automatycznym usuwaniem starych danych
+Real-time line chart with:
+- Automatic Y-axis scaling
+- Configurable X-axis time window
+- Grid, axes, and labels
+- Refresh rate limiting
+- Automatic removal of old data
 
-## Konstruktor
+## Constructor
 
 ```cpp
-Chart(int x, int y, int width, int height, const char* title = "Wykres pomiarów");
+Chart(int x, int y, int width, int height, const char* title = "Measurements");
 ```
 
-| Parametr | Typ | Opis |
-|----------|-----|------|
-| `x`, `y` | `int` | Pozycja |
-| `width`, `height` | `int` | Rozmiar |
-| `title` | `const char*` | Tytuł wykresu (wyświetlany u góry) |
+| Parameter | Type | Description |
+|-----------|------|-------------|
+| `x`, `y` | `int` | Position |
+| `width`, `height` | `int` | Size |
+| `title` | `const char*` | Chart title (displayed at top) |
 
-## Metody
+## Methods
 
-| Metoda | Zwraca | Opis |
-|--------|--------|------|
-| `create(HWND parent)` | `void` | Tworzy kontrolkę wykresu |
-| `addDataPoint(double value, const wstring& unit)` | `void` | Dodaje punkt pomiarowy |
-| `clear()` | `void` | Czyści dane |
-| `render(HDC hdc)` | `void` | Rysuje wykres (wewnętrzne) |
-| `setTimeWindow(int seconds)` | `void` | Okno czasowe osi X (dom. 30 s) |
-| `setColors(COLORREF grid, axis, data)` | `void` | Kolory wykresu |
-| `setAutoScale(bool)` | `void` | Auto-skalowanie osi Y (dom. true) |
-| `setYRange(double min, double max)` | `void` | Ręczny zakres Y |
-| `setRefreshRate(int ms)` | `void` | Min. interwał między odświeżeniami (dom. 100 ms) |
-| `getHandle()` | `HWND` | Uchwyt kontrolki |
-| `getId()` | `int` | Unikalny ID (auto od 5000) |
+| Method | Returns | Description |
+|--------|---------|-------------|
+| `create(HWND parent)` | `void` | Creates the chart control |
+| `addDataPoint(double value, const wstring& unit)` | `void` | Adds a data point |
+| `clear()` | `void` | Clears data |
+| `render(HDC hdc)` | `void` | Draws the chart (internal) |
+| `setTimeWindow(int seconds)` | `void` | X-axis time window (default 30 s) |
+| `setColors(COLORREF grid, axis, data)` | `void` | Chart colors |
+| `setAutoScale(bool)` | `void` | Y-axis auto-scaling (default true) |
+| `setYRange(double min, double max)` | `void` | Manual Y range |
+| `setRefreshRate(int ms)` | `void` | Min. interval between redraws (default 100 ms) |
+| `getHandle()` | `HWND` | Control handle |
+| `getId()` | `int` | Unique ID (auto from 5000) |
 
-## Struktura `DataPoint`
+## `DataPoint` Structure
 
 ```cpp
 struct DataPoint {
-    double value;                                 // Wartość
-    std::chrono::steady_clock::time_point timestamp; // Czas dodania
-    std::wstring unit;                            // Jednostka (np. L"V")
+    double value;                                 // Value
+    std::chrono::steady_clock::time_point timestamp; // Timestamp
+    std::wstring unit;                            // Unit (e.g. L"V")
 };
 ```
 
-## Przykłady
+## Examples
 
-### Wykres pomiarów napięcia
+### Voltage Chart
 
 ```cpp
-Chart* chart = new Chart(20, 100, 560, 250, "Napięcie [V]");
-chart->setTimeWindow(60);              // Ostatnie 60 sekund
+Chart* chart = new Chart(20, 100, 560, 250, "Voltage [V]");
+chart->setTimeWindow(60);              // Last 60 seconds
 chart->setColors(
-    RGB(80, 80, 80),      // siatka
-    RGB(200, 200, 200),   // osie
-    RGB(0, 255, 0)        // dane
+    RGB(80, 80, 80),      // grid
+    RGB(200, 200, 200),   // axes
+    RGB(0, 255, 0)        // data
 );
 window->add(chart);
 
-// Dodawanie danych (np. w callbacku odbierania):
+// Adding data (e.g. in receive callback):
 chart->addDataPoint(12.45, L"V");
 chart->addDataPoint(12.52, L"V");
 ```
 
-### Ręczne skalowanie osi Y
+### Manual Y-axis Scaling
 
 ```cpp
 chart->setAutoScale(false);
-chart->setYRange(0.0, 25.0);  // Zakres 0–25
+chart->setYRange(0.0, 25.0);  // Range 0–25
 ```
 
-### Szybkie odświeżanie
+### Fast Refresh
 
 ```cpp
-chart->setRefreshRate(50);  // Odświeżaj max co 50 ms (20 FPS)
+chart->setRefreshRate(50);  // Refresh max every 50 ms (20 FPS)
 ```
 
-## Rysowanie
+## Rendering
 
-Wykres używa własnej klasy okna (`ChartClass`) z procedurą `WM_PAINT`:
-- Czarne tło
-- Siatka (linie kropkowane)
-- Osie z etykietami (wartości Y, czas X w sekundach)
-- Linia łącząca punkty danych
-- Kropki w punktach danych
-- Tytuł u góry
+The chart uses its own window class (`ChartClass`) with `WM_PAINT`:
+- Black background
+- Grid (dotted lines)
+- Axes with labels (Y values, X time in seconds)
+- Line connecting data points
+- Dots at data points
+- Title at top
 
-## Uwagi
+## Notes
 
-- ID zaczynają się od **5000**
-- Dane starsze niż `timeWindow` są automatycznie usuwane
-- `addDataPoint()` respektuje `refreshRate` — danych może być więcej niż odświeżeń
-- Auto-scale dodaje 10% marginesu powyżej/poniżej wartości ekstremalnych
-- Dla płaskiej linii (min ≈ max) automatycznie dodawany jest margines
+- IDs start at **5000**
+- Data older than `timeWindow` is automatically removed
+- `addDataPoint()` respects `refreshRate` — there can be more data than redraws
+- Auto-scale adds 10% margin above/below extreme values
+- For flat lines (min ≈ max) a margin is automatically added

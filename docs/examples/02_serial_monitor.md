@@ -1,6 +1,6 @@
-# Przykład 02 — Serial Monitor
+# Example 02 — Serial Monitor
 
-Monitor portu szeregowego z wyborem portu, przyciskami połączenia i logiem komunikacji.
+Serial port monitor with port selection, connect/disconnect buttons, and communication log.
 
 ## `platformio.ini`
 
@@ -32,15 +32,15 @@ TextArea*    txtLog;
 InputField*  inputSend;
 Serial       serial;
 
-// Wektor portów COM do powiązania z Select
+// COM port list linked to Select
 std::vector<std::string> portList;
 
 void refreshPorts() {
-    serial.init();  // skanuje porty
+    serial.init();  // scans ports
     portList.clear();
-    // Serial::init() wypełnia wewnętrzną listę — tu ręcznie dodajemy znane porty
-    // W praktyce: użyj serial.getAvailablePorts() jeśli API to wspiera,
-    // lub ręcznie enumeruj z SetupAPI
+    // Serial::init() populates the internal list — here we manually add known ports
+    // In practice: use serial.getAvailablePorts() if the API supports it,
+    // or manually enumerate via SetupAPI
     portList.push_back("COM1");
     portList.push_back("COM3");
     portList.push_back("COM4");
@@ -65,21 +65,21 @@ void setup() {
 
     int y = 10;
 
-    // --- Pasek statusu ---
-    lblStatus = new Label(10, y, 300, 22, L"Status: Rozłączony");
+    // --- Status bar ---
+    lblStatus = new Label(10, y, 300, 22, L"Status: Disconnected");
     window->add(lblStatus);
     y += 30;
 
-    // --- Wybór portu ---
+    // --- Port selection ---
     window->add(new Label(10, y, 60, 22, L"Port:"));
     selPort = new Select(75, y, 120, 200, "COM1", nullptr);
     window->add(selPort);
 
-    btnConnect = new Button(210, y, 100, 25, "Połącz", [](Button* btn) {
+    btnConnect = new Button(210, y, 100, 25, "Connect", [](Button* btn) {
         if (serial.isConnected()) {
             serial.disconnect();
-            lblStatus->setText(L"Status: Rozłączony");
-            SetWindowTextA(btnConnect->getHandle(), "Połącz");
+            lblStatus->setText(L"Status: Disconnected");
+            SetWindowTextA(btnConnect->getHandle(), "Connect");
         } else {
             const char* port = selPort->getText();
             if (port && port[0]) {
@@ -90,7 +90,7 @@ void setup() {
     });
     window->add(btnConnect);
 
-    window->add(new Button(320, y, 100, 25, "Odśwież", [](Button*) {
+    window->add(new Button(320, y, 100, 25, "Refresh", [](Button*) {
         refreshPorts();
     }));
     y += 35;
@@ -100,13 +100,13 @@ void setup() {
     window->add(txtLog);
     y += 330;
 
-    // --- Pole wysyłania ---
+    // --- Send field ---
     inputSend = new InputField(10, y, 560, 28, "", nullptr);
     window->add(inputSend);
 
-    window->add(new Button(580, y, 90, 28, "Wyślij", [](Button*) {
+    window->add(new Button(580, y, 90, 28, "Send", [](Button*) {
         if (!serial.isConnected()) {
-            lblStatus->setText(L"Najpierw połącz!");
+            lblStatus->setText(L"Connect first!");
             return;
         }
         const char* text = inputSend->getText();
@@ -121,17 +121,17 @@ void setup() {
         }
     }));
 
-    // --- Callbacki Serial ---
+    // --- Serial callbacks ---
     serial.onConnect([]() {
-        lblStatus->setText(L"Status: Połączony");
-        SetWindowTextA(btnConnect->getHandle(), "Rozłącz");
-        txtLog->append(L"--- Połączono ---\r\n");
+        lblStatus->setText(L"Status: Connected");
+        SetWindowTextA(btnConnect->getHandle(), "Disconnect");
+        txtLog->append(L"--- Connected ---\r\n");
     });
 
     serial.onDisconnect([]() {
-        lblStatus->setText(L"Status: Rozłączony");
-        SetWindowTextA(btnConnect->getHandle(), "Połącz");
-        txtLog->append(L"--- Rozłączono ---\r\n");
+        lblStatus->setText(L"Status: Disconnected");
+        SetWindowTextA(btnConnect->getHandle(), "Connect");
+        txtLog->append(L"--- Disconnected ---\r\n");
     });
 
     serial.onReceive([](const std::vector<uint8_t>& data) {
@@ -143,16 +143,16 @@ void setup() {
 }
 
 void loop() {
-    // Serial działa na osobnym wątku — tu nic nie potrzeba
+    // Serial runs on a separate thread — nothing needed here
 }
 ```
 
-## Kluczowe punkty
+## Key Points
 
-1. **Serial** — komunikacja COM port, wątkowy odbiór danych
-2. `serial.init()` — musi być wywołane przed `connect()`
-3. `serial.onReceive()` — callback wywoływany z wątku odbioru (uwaga na thread-safety!)
-4. **TextArea** — readonly, `append()` dodaje tekst z auto-scroll
-5. **InputField** — pole edycyjne, `getText()` zwraca aktualny tekst
-6. **Select** — combo box, `getText()` zwraca wybrany element
-7. **StringUtils::utf8ToWide()** — konwersja UTF-8 → UTF-16 do metod `wchar_t*`
+1. **Serial** — COM port communication with threaded data reception
+2. `serial.init()` — must be called before `connect()`
+3. `serial.onReceive()` — callback invoked from the receive thread (beware of thread safety!)
+4. **TextArea** — readonly, `append()` adds text with auto-scroll
+5. **InputField** — editable field, `getText()` returns the current text
+6. **Select** — combo box, `getText()` returns the selected item
+7. **StringUtils::utf8ToWide()** — UTF-8 → UTF-16 conversion for `wchar_t*` methods

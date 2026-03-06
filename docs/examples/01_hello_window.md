@@ -1,6 +1,6 @@
-# Przykład 01 — Hello Window
+# Example 01 — Hello Window
 
-Minimalna aplikacja z oknem, etykietą i przyciskiem.
+Minimal application with a window, a label, and a button.
 
 ## `platformio.ini`
 
@@ -27,34 +27,34 @@ void setup() {
     window = new SimpleWindow(450, 250, "Hello JQB_WindowsLib", 0);
     window->init();
 
-    window->add(new Label(20, 20, 410, 30, L"Witaj! To jest Twoja pierwsza aplikacja."));
+    window->add(new Label(20, 20, 410, 30, L"Welcome! This is your first application."));
 
-    lblInfo = new Label(20, 60, 410, 25, L"Kliknięć: 0");
+    lblInfo = new Label(20, 60, 410, 25, L"Clicks: 0");
     window->add(lblInfo);
 
-    window->add(new Button(20, 100, 180, 35, "Kliknij mnie!", [](Button* btn) {
+    window->add(new Button(20, 100, 180, 35, "Click me!", [](Button* btn) {
         clickCount++;
         wchar_t buf[64];
-        swprintf(buf, 64, L"Kliknięć: %d", clickCount);
+        swprintf(buf, 64, L"Clicks: %d", clickCount);
         lblInfo->setText(buf);
     }));
 
-    window->add(new Button(220, 100, 180, 35, "Resetuj", [](Button* btn) {
+    window->add(new Button(220, 100, 180, 35, "Reset", [](Button* btn) {
         clickCount = 0;
-        lblInfo->setText(L"Kliknięć: 0");
+        lblInfo->setText(L"Clicks: 0");
     }));
 }
 
 void loop() {
-    // Pusta — aplikacja jest w pełni zdarzeniowa
+    // Empty — the application is fully event-driven
 }
 ```
 
-## Kluczowe punkty
+## Key Points
 
-1. **SimpleWindow** tworzy główne okno — parametry: szerokość, wysokość, tytuł (UTF-8), ID ikony (0 = brak)
-2. **Zawsze wywołaj `window->init()`** po utworzeniu okna
-3. **Label** przyjmuje tekst jako `const wchar_t*` (prefiks `L`)
-4. **Button** przyjmuje tekst jako `const char*` (UTF-8) i callback `std::function<void(Button*)>`
-5. Komponenty dodane przez `add()` są zarządzane przez okno — **nie usuwaj ich ręcznie**
-6. `swprintf` do formatowania tekstu wide-string (zamiast `printf`)
+1. **SimpleWindow** creates the main window — parameters: width, height, title (UTF-8), icon resource ID (0 = none)
+2. **Always call `window->init()`** after creating the window
+3. **Label** accepts text as `const wchar_t*` (prefix `L`)
+4. **Button** accepts text as `const char*` (UTF-8) and a callback `std::function<void(Button*)>`
+5. Components added via `add()` are managed by the window — **do not delete them manually**
+6. `swprintf` for wide-string formatting (instead of `printf`)

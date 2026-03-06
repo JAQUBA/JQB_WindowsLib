@@ -26,7 +26,7 @@ void Select::create(HWND parent) {
     m_hwnd = CreateWindowW(
         L"COMBOBOX",
         wideText.c_str(),
-        WS_CHILD | WS_VISIBLE | CBS_DROPDOWN | CBS_HASSTRINGS | WS_VSCROLL,
+        WS_CHILD | WS_VISIBLE | CBS_DROPDOWNLIST | CBS_HASSTRINGS | WS_VSCROLL,
         m_x, m_y,
         m_width, m_height + 150, // Zwiększona wysokość dla rozwijalnej listy
         parent,

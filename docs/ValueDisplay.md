@@ -1,84 +1,84 @@
-# ValueDisplay — Wyświetlacz wartości (styl LCD)
+# ValueDisplay — Value Display (LCD style)
 
 > `#include <UI/ValueDisplay/ValueDisplay.h>`
 
-## Opis
+## Description
 
-Niestandardowa kontrolka rysująca wartość numeryczną w stylu wyświetlacza LCD. Idealna do wyświetlania pomiarów z jednostkami, prefiksami i statusami. Obsługuje:
-- Duże, czytelne cyfry (GDI)
-- Prefiks + jednostka (np. "mV", "kΩ")
-- Statusy: AUTO, HOLD, DELTA + niestandardowe
-- Podwójne buforowanie (bez migotania)
-- Konfigurowalny wygląd (kolory, czcionki, precyzja)
-- Niestandardowy formatter wartości
+Custom control rendering a numeric value in LCD display style. Ideal for displaying measurements with units, prefixes, and statuses. Supports:
+- Large, readable digits (GDI)
+- Prefix + unit (e.g. "mV", "kΩ")
+- Statuses: AUTO, HOLD, DELTA + custom
+- Double buffering (no flicker)
+- Configurable appearance (colors, fonts, precision)
+- Custom value formatter
 
-## Konstruktor
+## Constructor
 
 ```cpp
 ValueDisplay(int x, int y, int width, int height);
 ```
 
-## Struktura `DisplayConfig`
+## `DisplayConfig` Structure
 
 ```cpp
 struct DisplayConfig {
-    COLORREF backgroundColor = RGB(20, 20, 20);   // Tło (czarne)
-    COLORREF textColor = RGB(0, 220, 0);           // Tekst (zielony)
-    COLORREF holdTextColor = RGB(220, 0, 0);       // Tekst HOLD (czerwony)
-    COLORREF deltaTextColor = RGB(0, 0, 220);      // Tekst DELTA (niebieski)
-    int precision = 2;                              // Miejsca po przecinku
-    std::wstring fontName = L"Arial";               // Czcionka
-    double valueFontRatio = 0.6;                    // Rozmiar czcionki wartości / height
-    double unitFontRatio = 0.25;                    // Rozmiar czcionki jednostek
-    double statusFontRatio = 0.16;                  // Rozmiar czcionki statusów
+    COLORREF backgroundColor = RGB(20, 20, 20);   // Background (black)
+    COLORREF textColor = RGB(0, 220, 0);           // Text (green)
+    COLORREF holdTextColor = RGB(220, 0, 0);       // HOLD text (red)
+    COLORREF deltaTextColor = RGB(0, 0, 220);      // DELTA text (blue)
+    int precision = 2;                              // Decimal places
+    std::wstring fontName = L"Arial";               // Font
+    double valueFontRatio = 0.6;                    // Value font size / height
+    double unitFontRatio = 0.25;                    // Unit font size ratio
+    double statusFontRatio = 0.16;                  // Status font size ratio
 };
 ```
 
-## Metody
+## Methods
 
-### Aktualizacja wartości
+### Value Updates
 
-| Metoda | Opis |
-|--------|------|
-| `updateValue(double value, wstring prefix, wstring unit)` | Ustaw wartość z prefiksem i jednostką |
-| `setMode(const wstring& mode)` | Ustaw etykietę trybu (np. L"DC V") |
-| `setMode(uint8_t mode)` | Ustaw tryb numerycznie (kompatybilność) |
-| `setRange(uint8_t range)` | Ustaw zakres numerycznie |
-| `setAuto(bool isAuto)` | Włącz/wyłącz status AUTO |
-| `setHold(bool isHold)` | Włącz/wyłącz status HOLD |
-| `setDelta(bool isDelta)` | Włącz/wyłącz status DELTA |
-| `addCustomStatus(wstring name, bool active)` | Dodaj niestandardowy status |
-| `updateDisplay(value, mode, range, auto, hold, delta)` | Aktualizuj wszystko naraz (kompatybilność) |
-| `updateFullDisplay(value, prefix, unit, mode, statuses)` | Pełna aktualizacja (uniwersalna) |
+| Method | Description |
+|--------|-------------|
+| `updateValue(double value, wstring prefix, wstring unit)` | Set value with prefix and unit |
+| `setMode(const wstring& mode)` | Set mode label (e.g. L"DC V") |
+| `setMode(uint8_t mode)` | Set mode numerically (compatibility) |
+| `setRange(uint8_t range)` | Set range numerically |
+| `setAuto(bool isAuto)` | Toggle AUTO status |
+| `setHold(bool isHold)` | Toggle HOLD status |
+| `setDelta(bool isDelta)` | Toggle DELTA status |
+| `addCustomStatus(wstring name, bool active)` | Add custom status |
+| `updateDisplay(value, mode, range, auto, hold, delta)` | Update everything at once (compatibility) |
+| `updateFullDisplay(value, prefix, unit, mode, statuses)` | Full update (universal) |
 
-### Konfiguracja
+### Configuration
 
-| Metoda | Opis |
-|--------|------|
-| `setConfig(const DisplayConfig& config)` | Ustaw konfigurację wyświetlacza |
-| `setValueFormatter(ValueFormatter formatter)` | Niestandardowe formatowanie wartości |
+| Method | Description |
+|--------|-------------|
+| `setConfig(const DisplayConfig& config)` | Set display configuration |
+| `setValueFormatter(ValueFormatter formatter)` | Custom value formatting |
 
-### Gettery
+### Getters
 
-| Metoda | Zwraca |
-|--------|--------|
-| `getValue()` | `double` — aktualna wartość |
-| `getMode()` | `uint8_t` — tryb numeryczny |
-| `getModeString()` | `const wstring&` — etykieta trybu |
-| `getUnit()` | `const wstring&` — jednostka |
-| `getPrefix()` | `const wstring&` — prefiks |
+| Method | Returns |
+|--------|---------|
+| `getValue()` | `double` — current value |
+| `getMode()` | `uint8_t` — numeric mode |
+| `getModeString()` | `const wstring&` — mode label |
+| `getUnit()` | `const wstring&` — unit |
+| `getPrefix()` | `const wstring&` — prefix |
 | `getHandle()` | `HWND` |
-| `getId()` | `int` (auto od 5000) |
+| `getId()` | `int` (auto from 5000) |
 
-## Niestandardowy formatter
+## Custom Formatter
 
 ```cpp
 using ValueFormatter = std::function<std::wstring(double value, int precision)>;
 ```
 
-## Przykłady
+## Examples
 
-### Wyświetlacz napięcia
+### Voltage Display
 
 ```cpp
 ValueDisplay* vd = new ValueDisplay(20, 20, 300, 120);
@@ -88,14 +88,14 @@ vd->setMode(L"DC V");
 vd->updateValue(12.345, L"", L"V");
 ```
 
-### Wyświetlacz z prefiksem
+### Display with Prefix
 
 ```cpp
 vd->updateValue(4.72, L"m", L"A");    // 4.72 mA
-vd->updateValue(2.2, L"k", L"Ω");     // 2.2 kΩ
+vd->updateValue(2.2, L"k", L"\u03A9"); // 2.2 kΩ
 ```
 
-### Konfiguracja wyglądu
+### Appearance Configuration
 
 ```cpp
 ValueDisplay::DisplayConfig config;
@@ -106,7 +106,7 @@ config.fontName = L"Consolas";
 vd->setConfig(config);
 ```
 
-### Niestandardowy formatter
+### Custom Formatter
 
 ```cpp
 vd->setValueFormatter([](double value, int precision) -> std::wstring {
@@ -118,7 +118,7 @@ vd->setValueFormatter([](double value, int precision) -> std::wstring {
 });
 ```
 
-### Pełna aktualizacja
+### Full Update
 
 ```cpp
 std::map<std::wstring, bool> statuses;
@@ -126,29 +126,29 @@ statuses[L"AUTO"] = true;
 statuses[L"RMS"] = true;
 
 vd->updateFullDisplay(
-    230.5,             // wartość
-    L"",               // prefiks
-    L"V",              // jednostka
-    L"AC V",           // tryb
-    statuses           // statusy
+    230.5,             // value
+    L"",               // prefix
+    L"V",              // unit
+    L"AC V",           // mode
+    statuses           // statuses
 );
 ```
 
-## Layout wyświetlacza
+## Display Layout
 
 ```
 ┌────────────────────────────────────┐
-│ AUTO HOLD DELTA          DC V      │  ← statusy (lewy górny), tryb (prawy górny)
+│ AUTO HOLD DELTA          DC V      │  ← statuses (top left), mode (top right)
 │                                    │
 │                                    │
-│            12.345 V                │  ← wartość + jednostka (dolna część, wyśrodkowana)
+│            12.345 V                │  ← value + unit (bottom, centered)
 └────────────────────────────────────┘
 ```
 
-## Uwagi
+## Notes
 
-- Kontrolka rejestruje własną klasę okna `ValueDisplayClass`
-- Podwójne buforowanie (`CreateCompatibleDC` / `BitBlt`) eliminuje migotanie
-- `WM_ERASEBKGND` zwraca 1 (rysowanie tła w `WM_PAINT`)
-- Kolory tekstu zmieniają się automatycznie: HOLD=czerwony, DELTA=niebieski, normalny=zielony
-- `INFINITY` formatowana jest jako `"OL"` (Over Limit)
+- Control registers its own window class `ValueDisplayClass`
+- Double buffering (`CreateCompatibleDC` / `BitBlt`) eliminates flicker
+- `WM_ERASEBKGND` returns 1 (background drawn in `WM_PAINT`)
+- Text colors change automatically: HOLD=red, DELTA=blue, normal=green
+- `INFINITY` is formatted as `"OL"` (Over Limit)

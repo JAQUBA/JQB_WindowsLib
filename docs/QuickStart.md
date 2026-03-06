@@ -1,18 +1,18 @@
 # Quick Start — JQB_WindowsLib
 
-Szybki przewodnik uruchomienia pierwszej aplikacji.
+A quick guide to launching your first application.
 
 ---
 
-## 1. Wymagania
+## 1. Requirements
 
-- [PlatformIO](https://platformio.org/) (jako rozszerzenie VS Code lub CLI)
-- Kompilator **MinGW-w64 (GCC)** — PlatformIO pobiera go automatycznie
+- [PlatformIO](https://platformio.org/) (as VS Code extension or CLI)
+- **MinGW-w64 (GCC)** compiler — PlatformIO downloads it automatically
 - Windows 10+ (x64)
 
 ---
 
-## 2. Tworzenie projektu
+## 2. Creating a Project
 
 ### `platformio.ini`
 
@@ -23,7 +23,7 @@ lib_deps =
     https://github.com/JAQUBA/JQB_WindowsLib.git
 ```
 
-> Flagi C++17, UNICODE, statyczne linkowanie i biblioteki są dodawane automatycznie przez bibliotekę.
+> C++17, UNICODE, static linking, and library flags are added automatically by the library.
 
 ### `src/main.cpp`
 
@@ -36,85 +36,85 @@ lib_deps =
 SimpleWindow* window;
 
 void setup() {
-    window = new SimpleWindow(500, 350, "Moja Aplikacja", 0);
+    window = new SimpleWindow(500, 350, "My Application", 0);
     window->init();
 
-    window->add(new Label(20, 20, 460, 30, L"Witaj w JQB_WindowsLib!"));
+    window->add(new Label(20, 20, 460, 30, L"Welcome to JQB_WindowsLib!"));
 
-    window->add(new Button(20, 70, 150, 35, "Kliknij mnie", [](Button* btn) {
-        MessageBoxW(NULL, L"Przycisk kliknięty!", L"Info", MB_OK);
+    window->add(new Button(20, 70, 150, 35, "Click me", [](Button* btn) {
+        MessageBoxW(NULL, L"Button clicked!", L"Info", MB_OK);
     }));
 }
 
 void loop() {
-    // Wywoływana w każdym cyklu pętli komunikatów — tu logika ciągła
+    // Called in each message loop cycle — continuous logic goes here
 }
 ```
 
-### 3. Budowanie i uruchamianie
+### 3. Building and Running
 
 ```bash
-pio run                # Kompilacja
-pio run --target exec  # Uruchomienie (jeśli skonfigurowane)
+pio run                # Compile
+pio run --target exec  # Run (if configured)
 ```
 
-Wynikowy `.exe` znajdziesz w `.pio/build/app/program.exe`.
+The resulting `.exe` can be found in `.pio/build/app/program.exe`.
 
 ---
 
-## 4. Dodawanie ikony (opcjonalnie)
+## 4. Adding an Icon (optional)
 
-1. Umieść plik `app.ico` w katalogu głównym projektu.
-2. Utwórz `resources.rc`:
+1. Place an `app.ico` file in the project root directory.
+2. Create `resources.rc`:
    ```rc
    101 ICON "app.ico"
    ```
-3. W `SimpleWindow` podaj ID ikony:
+3. In `SimpleWindow` pass the icon ID:
    ```cpp
-   window = new SimpleWindow(800, 600, "Tytuł", 101);
+   window = new SimpleWindow(800, 600, "Title", 101);
    ```
 
-Skrypt `compile_resources.py` z biblioteki automatycznie skompiluje `.rc` do `.res`.
+The `compile_resources.py` script from the library automatically compiles `.rc` to `.res`.
 
 ---
 
-## 5. Cykl życia aplikacji
+## 5. Application Lifecycle
 
 ```
 Program start
     │
     ▼
-  init()          ← opcjonalnie: globalne zmienne, wczesna konfiguracja
+  init()          ← optional: global variables, early configuration
     │
     ▼
-  setup()         ← tworzenie okien, komponentów, inicjalizacja I/O
+  setup()         ← create windows, components, initialize I/O
     │
     ▼
   ┌─── loop() ◄──┐
-  │               │  ← pętla komunikatów Windows + loop()
+  │               │  ← Windows message loop + loop()
   └───────────────┘
     │
     ▼
   Program end
 ```
 
-- `init()` — wywoływana w konstruktorze `Core` (przed `WinMain`)
-- `setup()` — wywoływana raz na starcie `WinMain`
-- `loop()` — wywoływana w każdym cyklu pętli komunikatów
+- `init()` — called in `Core` constructor (before `WinMain`)
+- `setup()` — called once at the start of `WinMain`
+- `loop()` — called in each message loop cycle
 
-Wszystkie trzy funkcje są `__weak` — definiujesz tylko te, których potrzebujesz.
+All three functions are `__weak` — define only the ones you need.
 
 ---
 
-## 6. Częste wzorce
+## 6. Common Patterns
 
-### Aktualizacja etykiety z loop()
+### Updating a Label from loop()
 
 ```cpp
 Label* lblTime;
 
 void setup() {
-    window = new SimpleWindow(400, 200, "Zegar", 0);
+    window = new SimpleWindow(400, 200, "Clock", 0);
     window->init();
     lblTime = new Label(20, 20, 360, 30, L"00:00:00");
     window->add(lblTime);
@@ -134,24 +134,24 @@ void loop() {
 }
 ```
 
-### Komunikacja Serial
+### Serial Communication
 
 ```cpp
 #include <IO/Serial/Serial.h>
 Serial serial;
 
 void setup() {
-    // ... tworzenie okna ...
+    // ... create window ...
     serial.init();
     serial.setPort("COM3");
     serial.onReceive([](const std::vector<uint8_t>& data) {
-        // przetwarzanie odebranych danych
+        // process received data
     });
     serial.connect();
 }
 ```
 
-### Zapis konfiguracji
+### Saving Configuration
 
 ```cpp
 #include <Util/ConfigManager.h>
@@ -159,16 +159,16 @@ ConfigManager config("settings.ini");
 
 void setup() {
     std::string port = config.getValue("port", "COM1");
-    // ... użycie port ...
+    // ... use port ...
 }
 
-// config automatycznie zapisze się przy zamknięciu (destruktor)
+// config auto-saves on close (destructor)
 ```
 
 ---
 
-## 7. Następne kroki
+## 7. Next Steps
 
-- 📖 [Dokumentacja komponentów](.) — szczegóły każdego komponentu
-- 💡 [Przykłady](examples/) — gotowe aplikacje do nauki
-- 🔧 [Copilot Instructions](../.github/copilot-instructions.md) — po przeczytaniu Copilot pisze za Ciebie
+- [Component Documentation](.) — details of each component
+- [Examples](examples/) — ready-to-use demo applications
+- [Copilot Instructions](../.github/copilot-instructions.md) — after reading, Copilot writes code for you

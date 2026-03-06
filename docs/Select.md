@@ -1,53 +1,53 @@
-# Select — Lista rozwijana (ComboBox)
+# Select — Dropdown List (ComboBox)
 
 > `#include <UI/Select/Select.h>`
 
-## Opis
+## Description
 
-Rozwijana lista wyboru (ComboBox). Obsługuje:
-- Dodawanie elementów statycznie i dynamicznie
-- Callback `onChange` przy zmianie wyboru
-- Linkowanie z zewnętrznym wektorem (`link()`)
-- Tekst w UTF-8 z automatyczną konwersją na Unicode
+Dropdown selection list (ComboBox). Supports:
+- Adding items statically and dynamically
+- `onChange` callback on selection change
+- Linking with an external vector (`link()`)
+- UTF-8 text with automatic Unicode conversion
 
-## Konstruktor
+## Constructor
 
 ```cpp
 Select(int x, int y, int width, int height, const char* text,
        std::function<void(Select*)> onChange);
 ```
 
-| Parametr | Typ | Opis |
-|----------|-----|------|
-| `x`, `y` | `int` | Pozycja |
-| `width`, `height` | `int` | Rozmiar (height = wysokość pola edycji) |
-| `text` | `const char*` | Tekst początkowy (UTF-8) |
-| `onChange` | `function<void(Select*)>` | Callback wywoływany przy zmianie wyboru |
+| Parameter | Type | Description |
+|-----------|------|-------------|
+| `x`, `y` | `int` | Position |
+| `width`, `height` | `int` | Size (height = edit field height) |
+| `text` | `const char*` | Initial text (UTF-8) |
+| `onChange` | `function<void(Select*)>` | Callback invoked on selection change |
 
-## Metody
+## Methods
 
-| Metoda | Zwraca | Opis |
-|--------|--------|------|
-| `create(HWND parent)` | `void` | Tworzy kontrolkę ComboBox |
-| `addItem(const char* item)` | `void` | Dodaje element do listy |
-| `setText(const char* text)` | `void` | Ustawia wybrany tekst |
-| `clear()` | `void` | Czyści listę elementów |
-| `link(const vector<string>* items)` | `void` | Linkuje z zewnętrznym wektorem |
-| `updateItems()` | `void` | Aktualizuje listę z powiązanego wektora |
-| `handleSelection()` | `void` | Obsługuje zmianę wyboru (wewnętrzne) |
-| `getText()` | `const char*` | Tekst aktualnie wybranego elementu |
-| `getHandle()` | `HWND` | Uchwyt kontrolki |
-| `getId()` | `int` | Unikalny ID (auto od 3000) |
+| Method | Returns | Description |
+|--------|---------|-------------|
+| `create(HWND parent)` | `void` | Creates the ComboBox control |
+| `addItem(const char* item)` | `void` | Adds an item to the list |
+| `setText(const char* text)` | `void` | Sets the selected text |
+| `clear()` | `void` | Clears all items |
+| `link(const vector<string>* items)` | `void` | Links with an external vector |
+| `updateItems()` | `void` | Refreshes the list from the linked vector |
+| `handleSelection()` | `void` | Handles selection change (internal) |
+| `getText()` | `const char*` | Text of currently selected item |
+| `getHandle()` | `HWND` | Control handle |
+| `getId()` | `int` | Unique ID (auto from 3000) |
 
-## Przykłady
+## Examples
 
-### Lista z elementami statycznymi
+### List with Static Items
 
 ```cpp
-Select* sel = new Select(20, 50, 200, 25, "Wybierz port",
+Select* sel = new Select(20, 50, 200, 25, "Select port",
     [](Select* s) {
         const char* selected = s->getText();
-        // Reakcja na wybór
+        // React to selection
     }
 );
 sel->addItem("COM1");
@@ -56,13 +56,13 @@ sel->addItem("COM5");
 window->add(sel);
 ```
 
-### Linkowanie z zewnętrznym wektorem
+### Linking with External Vector
 
 ```cpp
 Serial serial;
 serial.init();
 
-Select* selPort = new Select(20, 50, 200, 25, "Porty COM",
+Select* selPort = new Select(20, 50, 200, 25, "COM Ports",
     [&serial](Select* s) {
         serial.setPort(s->getText());
     }
@@ -70,20 +70,20 @@ Select* selPort = new Select(20, 50, 200, 25, "Porty COM",
 selPort->link(&serial.getAvailablePorts());
 window->add(selPort);
 
-// Gdy lista portów się zmieni:
+// When the port list changes:
 serial.updateComPorts();
-selPort->updateItems();   // Odświeża kontrolkę danymi z linked wektora
+selPort->updateItems();   // Refreshes control data from the linked vector
 ```
 
-### Programowe ustawienie wyboru
+### Programmatic Selection
 
 ```cpp
-sel->setText("COM3");  // Zaznacza element "COM3" na liście
+sel->setText("COM3");  // Selects the "COM3" item
 ```
 
-## Uwagi
+## Notes
 
-- ID zaczynają się od **3000**
-- `height` dotyczy pola edycji. Rozwijana lista jest automatycznie wyższa (+150 px)
-- `link()` nie kopiuje danych, trzyma wskaźnik na wektor — wektor musi żyć dłużej niż Select
-- `clear()` zeruje listę i `selectedIndex`
+- IDs start at **3000**
+- `height` refers to the edit field. The dropdown list is automatically taller (+150 px)
+- `link()` does not copy data — it holds a pointer to the vector. The vector must outlive the Select
+- `clear()` resets the list and `selectedIndex`

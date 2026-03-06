@@ -1,6 +1,6 @@
-# Przykład 07 — Image Viewer
+# Example 07 — Image Viewer
 
-Przeglądarka obrazów z GDI+ — ładowanie z pliku, zmiana trybu skalowania.
+Image viewer using GDI+ — loading from file, switching scale modes.
 
 ## `src/main.cpp`
 
@@ -19,14 +19,14 @@ ImageView*    imgView;
 Label*        lblFile;
 Select*       selScale;
 
-// Otwieranie pliku dialogiem Windows
+// Open file using the Windows dialog
 std::wstring openFileDialog(HWND owner) {
     wchar_t file[MAX_PATH] = {0};
     OPENFILENAMEW ofn = {};
     ofn.lStructSize  = sizeof(ofn);
     ofn.hwndOwner    = owner;
-    ofn.lpstrFilter  = L"Obrazy (*.bmp;*.png;*.jpg;*.jpeg)\0*.bmp;*.png;*.jpg;*.jpeg\0"
-                       L"Wszystkie pliki (*.*)\0*.*\0";
+    ofn.lpstrFilter  = L"Images (*.bmp;*.png;*.jpg;*.jpeg)\0*.bmp;*.png;*.jpg;*.jpeg\0"
+                       L"All files (*.*)\0*.*\0";
     ofn.lpstrFile    = file;
     ofn.nMaxFile     = MAX_PATH;
     ofn.Flags        = OFN_FILEMUSTEXIST | OFN_PATHMUSTEXIST;
@@ -42,8 +42,8 @@ void setup() {
 
     int y = 10;
 
-    // --- Pasek narzędzi ---
-    window->add(new Button(10, y, 120, 28, "Otwórz plik", [](Button*) {
+    // --- Toolbar ---
+    window->add(new Button(10, y, 120, 28, "Open file", [](Button*) {
         std::wstring path = openFileDialog(NULL);
         if (!path.empty()) {
             imgView->loadFromFile(path);
@@ -51,7 +51,7 @@ void setup() {
         }
     }));
 
-    window->add(new Label(140, y + 3, 60, 22, L"Tryb:"));
+    window->add(new Label(140, y + 3, 60, 22, L"Mode:"));
 
     selScale = new Select(200, y, 160, 200, "Aspect Fit", [](Select* sel) {
         int idx = (int)SendMessage(sel->getHandle(), CB_GETCURSEL, 0, 0);
@@ -68,11 +68,11 @@ void setup() {
     selScale->addItem("Stretch");
     selScale->addItem("Original");
 
-    lblFile = new Label(380, y + 3, 400, 22, L"(brak pliku)");
+    lblFile = new Label(380, y + 3, 400, 22, L"(no file)");
     window->add(lblFile);
     y += 38;
 
-    // --- Widok obrazu ---
+    // --- Image view ---
     imgView = new ImageView(10, y, 770, 540);
     window->add(imgView);
     imgView->setScaleMode(ImageView::ScaleMode::ASPECT_FIT);
@@ -81,23 +81,23 @@ void setup() {
 void loop() {}
 ```
 
-## Kluczowe punkty
+## Key Points
 
-1. **ImageView** — wyświetlanie obrazów z GDI+
-   - `loadFromFile(wstring)` — ładuje BMP, PNG, JPG z dysku
-   - `loadFromResource(resId)` — ładuje z zasobów RC
-   - `loadFromMemory(data, size)` — ładuje z bufora w pamięci
-   - `setScaleMode(mode)` — tryb skalowania:
-     - `ASPECT_FIT` — mieści z zachowaniem proporcji (domyślny)
-     - `ASPECT_FILL` — wypełnia z zachowaniem proporcji (obcina)
-     - `STRETCH` — rozciąga do rozmiaru kontrolki
-     - `ORIGINAL` — oryginalna wielkość (1:1)
+1. **ImageView** — image rendering with GDI+
+   - `loadFromFile(wstring)` — loads BMP, PNG, JPG from disk
+   - `loadFromResource(resId)` — loads from RC resources
+   - `loadFromMemory(data, size)` — loads from a memory buffer
+   - `setScaleMode(mode)` — scaling mode:
+     - `ASPECT_FIT` — fits while preserving aspect ratio (default)
+     - `ASPECT_FILL` — fills while preserving ratio (crops)
+     - `STRETCH` — stretches to control size
+     - `ORIGINAL` — original size (1:1)
 
-2. **GDI+** — inicjalizowany automatycznie przez bibliotekę (nie musisz wywoływać `GdiplusStartup`)
+2. **GDI+** — initialized automatically by the library (no need to call `GdiplusStartup`)
 
-3. **OPENFILENAMEW** — standardowy dialog Windows do wyboru pliku (z `commdlg.h`)
+3. **OPENFILENAMEW** — standard Windows file open dialog (from `commdlg.h`)
 
-4. **linkowanie `comdlg32`** — może być potrzebne dodanie do `build_flags`:
+4. **Linking `comdlg32`** — you may need to add to `build_flags`:
    ```ini
    build_flags = -lcomdlg32
    ```

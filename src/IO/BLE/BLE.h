@@ -6,7 +6,6 @@
 #include <vector>
 #include <functional>
 #include <atomic>
-#include <map>
 
 /* Forward declaration for setupapi types (loaded dynamically) */
 #ifndef _SETUPAPI_H_
@@ -27,19 +26,48 @@ typedef struct _BLUETOOTH_RADIO_INFO_BLE {
     USHORT manufacturer;
 } BLUETOOTH_RADIO_INFO_BLE;
 
-// Struktura reprezentująca urządzenie BLE
+/* GATT implementation (pimpl — defined in BLE.cpp) */
+struct BLEGattImpl;
+
+// =====================================================================
+// BLEDevice — informacja o znalezionym urządzeniu BLE
+// =====================================================================
 struct BLEDevice {
     std::wstring name;           // Nazwa urządzenia
-    std::wstring address;        // Adres MAC urządzenia
-    int rssi;                    // Siła sygnału (RSSI)
+    std::wstring address;        // Ścieżka urządzenia (device path)
+    int rssi;                    // Siła sygnału (RSSI), 0 jeśli niedostępne
     bool isConnectable;          // Czy urządzenie można połączyć
-    
-    // Konwersja do string dla Select
+
+    // Konwersja do string (dla Select)
     std::string toString() const;
 };
 
-// Klasa do obsługi komunikacji przez Bluetooth Low Energy
+// =====================================================================
+// BLEScanFilter — filtr urządzeń podczas skanowania
+// =====================================================================
+struct BLEScanFilter {
+    std::wstring nameContains;   // Filtruj po fragmencie nazwy (case-insensitive)
+    std::wstring pathContains;   // Filtruj po fragmencie ścieżki (case-insensitive)
+
+    BLEScanFilter() {}
+
+    // Filtr po nazwie
+    BLEScanFilter(const std::wstring& nameFilter)
+        : nameContains(nameFilter) {}
+
+    // Filtr po nazwie i ścieżce
+    BLEScanFilter(const std::wstring& nameFilter, const std::wstring& pathFilter)
+        : nameContains(nameFilter), pathContains(pathFilter) {}
+
+    bool isEmpty() const { return nameContains.empty() && pathContains.empty(); }
+};
+
+// =====================================================================
+// BLE — uniwersalna klasa komunikacji Bluetooth Low Energy
+// =====================================================================
 class BLE {
+    friend struct BLEGattImpl;
+
 public:
     // Stan połączenia BLE
     enum class ConnectionState {
@@ -47,91 +75,133 @@ public:
         SCANNING,
         CONNECTING,
         CONNECTED,
-        CONNECTION_ERROR  // Zmieniono z ERROR - konflikt z makrem Windows
+        CONNECTION_ERROR
     };
 
     BLE();
     ~BLE();
 
-    // Inicjalizacja adaptera BLE
+    // =================================================================
+    // Inicjalizacja
+    // =================================================================
+
     bool init();
-    
-    // Sprawdzenie czy BLE jest dostępne w systemie
     bool isAvailable() const { return m_bleAvailable; }
-    
-    // Skanowanie urządzeń BLE
+
+    // =================================================================
+    // Skanowanie urządzeń
+    // =================================================================
+
     bool startScan(int durationSeconds = 10);
+    bool startScan(const BLEScanFilter& filter, int durationSeconds = 10);
     void stopScan();
     bool isScanning() const { return m_scanning; }
-    
-    // Połączenie z urządzeniem
+
+    const std::vector<BLEDevice>& getDiscoveredDevices() const { return m_discoveredDevices; }
+    const std::vector<std::string>& getAvailableDevices() const { return m_availableDeviceStrings; }
+
+    // =================================================================
+    // Konfiguracja GATT (wywoływane przed connect)
+    // =================================================================
+
+    // UUID serwisu GATT do którego się łączymy
+    void setServiceUUID(const std::wstring& uuid);
+
+    // UUID charakterystyki notify (odbiór danych)
+    void setNotifyCharacteristicUUID(const std::wstring& uuid);
+
+    // UUID charakterystyki write (wysyłanie danych)
+    void setWriteCharacteristicUUID(const std::wstring& uuid);
+
+    // =================================================================
+    // Połączenie
+    // =================================================================
+
     bool connect(const std::wstring& deviceAddress);
     void disconnect();
     bool isConnected() const { return m_connectionState == ConnectionState::CONNECTED; }
-    
-    // Ustawienie urządzenia do połączenia (po nazwie lub adresie)
+
     void setDevice(const std::wstring& deviceNameOrAddress);
-    
-    // Pobieranie listy znalezionych urządzeń
-    const std::vector<BLEDevice>& getDiscoveredDevices() const { return m_discoveredDevices; }
-    
-    // Lista urządzeń jako stringi (dla kompatybilności z Select)
-    const std::vector<std::string>& getAvailableDevices() const { return m_availableDeviceStrings; }
-    
-    // Pobieranie aktualnego stanu
     ConnectionState getConnectionState() const { return m_connectionState; }
-    std::wstring getConnectionStateString() const;
-    
-    // Wysyłanie danych do urządzenia
-    bool send(const std::vector<uint8_t>& data);
+
+    // =================================================================
+    // Transmisja danych
+    // =================================================================
+
     bool write(const std::vector<uint8_t>& data);
-    
-    // Callbacki dla zdarzeń
+    bool send(const std::vector<uint8_t>& data);
+
+    // =================================================================
+    // Callbacki zdarzeń
+    // =================================================================
+
     void onConnect(std::function<void()> callback);
     void onDisconnect(std::function<void()> callback);
     void onReceive(std::function<void(const std::vector<uint8_t>&)> callback);
     void onDeviceDiscovered(std::function<void(const BLEDevice&)> callback);
     void onScanComplete(std::function<void()> callback);
     void onError(std::function<void(const std::wstring&)> callback);
-    
-    // UUID serwisów i charakterystyk dla OWON OW18B
-    static const std::wstring OWON_SERVICE_UUID;
-    static const std::wstring OWON_NOTIFY_CHARACTERISTIC_UUID;
-    static const std::wstring OWON_WRITE_CHARACTERISTIC_UUID;
+
+    // =================================================================
+    // Priorytetyzacja urządzeń (opcjonalna)
+    // =================================================================
+
+    void addPriorityFilter(const std::wstring& nameOrPathFragment);
+    void clearPriorityFilters();
 
 private:
-    // Wewnętrzne metody
+    // =====================================================================
+    // Marshaling callbacków na wątek UI przez PostMessage
+    // =====================================================================
+    HWND m_callbackHwnd;
+    bool createCallbackWindow();
+    void destroyCallbackWindow();
+    static LRESULT CALLBACK callbackWindowProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam);
+
+    // Wątki
     void scanThreadFunction();
     void connectionThreadFunction();
-    void notificationThreadFunction();
     void updateAvailableDeviceStrings();
-    bool setupNotifications();
-    
+    void signalAndJoinThread(HANDLE& hThread, std::atomic<bool>& stopFlag, DWORD timeoutMs);
+
+    // GATT setup (wywoływane z connectionThreadFunction)
+    bool setupGatt();
+
+    // Filtrowanie
+    bool matchesScanFilter(const std::wstring& name, const std::wstring& path) const;
+    bool isPriorityDevice(const std::wstring& name, const std::wstring& path) const;
+
     // Stan adaptera i połączenia
     bool m_bleAvailable;
     std::atomic<bool> m_scanning;
     std::atomic<ConnectionState> m_connectionState;
     std::wstring m_selectedDeviceAddress;
-    
-    // Wątki (Windows API zamiast std::thread)
+
+    // Konfiguracja UUID GATT
+    std::wstring m_serviceUUID;
+    std::wstring m_notifyCharUUID;
+    std::wstring m_writeCharUUID;
+
+    // Filtr skanowania
+    BLEScanFilter m_scanFilter;
+    std::vector<std::wstring> m_priorityFilters;
+
+    // Wątki
     HANDLE m_scanThread;
     HANDLE m_connectionThread;
-    HANDLE m_notificationThread;
     std::atomic<bool> m_stopScanThread;
     std::atomic<bool> m_stopConnectionThread;
-    std::atomic<bool> m_stopNotificationThread;
+    HANDLE m_stopEvent;
 
     static DWORD WINAPI scanThreadWrapperStatic(LPVOID param);
     static DWORD WINAPI connectionThreadWrapperStatic(LPVOID param);
-    static DWORD WINAPI notificationThreadWrapperStatic(LPVOID param);
 
-    // Parametry wątku skanowania
     int m_scanDurationSeconds;
-    
+
     // Lista odkrytych urządzeń
     std::vector<BLEDevice> m_discoveredDevices;
     std::vector<std::string> m_availableDeviceStrings;
-    
+
     // Callbacki
     std::function<void()> m_onConnectCallback;
     std::function<void()> m_onDisconnectCallback;
@@ -139,15 +209,12 @@ private:
     std::function<void(const BLEDevice&)> m_onDeviceDiscoveredCallback;
     std::function<void()> m_onScanCompleteCallback;
     std::function<void(const std::wstring&)> m_onErrorCallback;
-    
-    // Handlery Windows BLE
+
+    // Handle urządzenia BLE
     HANDLE m_deviceHandle;
-    HANDLE m_serviceHandle;
-    HANDLE m_notifyCharacteristicHandle;
-    HANDLE m_writeCharacteristicHandle;
-    
-    // Bufor do odbierania danych
-    std::vector<uint8_t> m_receiveBuffer;
+
+    // GATT (pimpl — implementacja w BLE.cpp)
+    BLEGattImpl* m_gatt;
 
     // --- Dynamic library loading (bthprops.cpl) ---
     HMODULE m_bthpropsDll;

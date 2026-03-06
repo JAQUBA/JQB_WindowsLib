@@ -1,6 +1,6 @@
-# Przykład 04 — Realtime Dashboard
+# Example 04 — Realtime Dashboard
 
-Dashboard z wykresem czasu rzeczywistego, wyświetlaczem wartości i paskiem postępu.
+Dashboard with a real-time chart, value display, and progress bar.
 
 ## `src/main.cpp`
 
@@ -29,14 +29,14 @@ void setup() {
     window = new SimpleWindow(800, 550, "Realtime Dashboard", 0);
     window->init();
 
-    // --- Tytuł ---
-    window->add(new Label(20, 10, 760, 28, L"Dashboard — symulacja danych w czasie rzeczywistym"));
+    // --- Title ---
+    window->add(new Label(20, 10, 760, 28, L"Dashboard — real-time data simulation"));
 
-    // --- ValueDisplay (wyświetlacz LCD) ---
+    // --- ValueDisplay (LCD display) ---
     valueDisp = new ValueDisplay(20, 50, 250, 100);
     window->add(valueDisp);
 
-    // Konfiguracja wyświetlacza
+    // Display configuration
     ValueDisplay::DisplayConfig cfg;
     cfg.backgroundColor = RGB(0, 0, 0);
     cfg.textColor = RGB(0, 255, 128);
@@ -46,28 +46,28 @@ void setup() {
     cfg.precision = 1;
     cfg.showUnit = true;
     valueDisp->setConfig(cfg);
-    valueDisp->setMode(L"°C");
+    valueDisp->setMode(L"\u00B0C");
     valueDisp->updateValue(L"--.-");
 
     // --- ProgressBar ---
-    window->add(new Label(290, 50, 100, 20, L"Wypełnienie:"));
+    window->add(new Label(290, 50, 100, 20, L"Fill:"));
     progress = new ProgressBar(290, 75, 480, 25);
     window->add(progress);
     progress->setProgress(0);
 
-    // --- Chart (wykres) ---
-    chart = new Chart(20, 170, 750, 320, "Temperatura");
+    // --- Chart ---
+    chart = new Chart(20, 170, 750, 320, "Temperature");
     window->add(chart);
-    chart->setTimeWindow(30);  // 30 sekund widocznych
+    chart->setTimeWindow(30);  // 30 seconds visible
     chart->setAutoScale(true);
     chart->setColors(
-        RGB(50, 50, 50),    // siatka
-        RGB(180, 180, 180), // osie
-        RGB(0, 200, 255)    // dane
+        RGB(50, 50, 50),    // grid
+        RGB(180, 180, 180), // axes
+        RGB(0, 200, 255)    // data
     );
     chart->setRefreshRate(50); // 20 FPS
 
-    // --- Przyciski sterujące ---
+    // --- Control buttons ---
     window->add(new Button(20, 505, 120, 30, "Start", [](Button* btn) {
         running = true;
         lastTick = GetTickCount();
@@ -77,7 +77,7 @@ void setup() {
         running = false;
     }));
 
-    window->add(new Button(280, 505, 120, 30, "Wyczyść", [](Button* btn) {
+    window->add(new Button(280, 505, 120, 30, "Clear", [](Button* btn) {
         chart->clear();
         valueDisp->updateValue(L"--.-");
         progress->setProgress(0);
@@ -89,23 +89,23 @@ void loop() {
     if (!running) return;
 
     DWORD now = GetTickCount();
-    if (now - lastTick < 100) return; // aktualizacja co 100ms
+    if (now - lastTick < 100) return; // update every 100ms
     lastTick = now;
 
-    // Symulacja: sinusoida + szum
+    // Simulation: sine wave + noise
     static double t = 0.0;
     t += 0.1;
     simValue = 22.0 + 5.0 * sin(t) + ((rand() % 100) - 50) * 0.02;
 
-    // Aktualizuj wykres
-    chart->addDataPoint(simValue, L"°C");
+    // Update chart
+    chart->addDataPoint(simValue, L"\u00B0C");
 
-    // Aktualizuj wyświetlacz
+    // Update display
     wchar_t buf[32];
     swprintf(buf, 32, L"%.1f", simValue);
     valueDisp->updateValue(buf);
 
-    // Aktualizuj pasek postępu (mapowanie 15-30°C → 0-100%)
+    // Update progress bar (mapping 15-30°C → 0-100%)
     int pct = (int)((simValue - 15.0) / 15.0 * 100.0);
     if (pct < 0) pct = 0;
     if (pct > 100) pct = 100;
@@ -113,21 +113,21 @@ void loop() {
 }
 ```
 
-## Kluczowe punkty
+## Key Points
 
-1. **Chart** — wykres czasu rzeczywistego z auto-scale
-   - `addDataPoint(value, unit)` — dodaje punkt danych z timestampem
-   - `setTimeWindow(seconds)` — szerokość okna czasowego
-   - `setRefreshRate(ms)` — limit FPS (domyślnie 100ms = 10 FPS)
-   - `setColors()` — konfiguracja kolorów siatki, osi, danych
-   - `clear()` — czyści wszystkie dane
+1. **Chart** — real-time chart with auto-scale
+   - `addDataPoint(value, unit)` — adds a data point with timestamp
+   - `setTimeWindow(seconds)` — visible time window width
+   - `setRefreshRate(ms)` — FPS limit (default 100ms = 10 FPS)
+   - `setColors()` — grid, axes, and data color configuration
+   - `clear()` — clears all data
 
-2. **ValueDisplay** — wyświetlacz LCD z double-bufferingiem
-   - `DisplayConfig` struct → kolory, czcionka, precyzja, jednostka
-   - `setMode(unit)` — ustawia jednostkę wyświetlaną
-   - `updateValue(text)` — aktualizacja wartości (nie miga dzięki double-bufferowi)
+2. **ValueDisplay** — LCD display with double-buffering
+   - `DisplayConfig` struct → colors, font, precision, unit
+   - `setMode(unit)` — sets the displayed unit
+   - `updateValue(text)` — updates the value (no flicker thanks to double-buffer)
 
-3. **ProgressBar** — pasek postępu 0-100%
-   - `setProgress(percent)` — ustawienie wartości
+3. **ProgressBar** — progress bar 0-100%
+   - `setProgress(percent)` — sets the value
 
-4. **loop()** — idealne miejsce na ciągłą aktualizację danych (polling z throttlingiem)
+4. **loop()** — ideal place for continuous data updates (polling with throttling)

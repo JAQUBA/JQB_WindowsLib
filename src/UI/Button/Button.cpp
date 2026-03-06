@@ -67,6 +67,7 @@ LRESULT CALLBACK CustomButtonProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lP
             // Sprawdź, czy naciśnięcie było krótkie czy długie
             auto pressIt = pressedButtons.find(hwnd);
             if (pressIt != pressedButtons.end()) {
+                bool handled = false;
                 // Jeśli długie naciśnięcie nie zostało już wykryte
                 if (!pressIt->second.longPressTriggered) {
                     auto currentTime = std::chrono::steady_clock::now();
@@ -76,11 +77,22 @@ LRESULT CALLBACK CustomButtonProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lP
                     // Wywołaj callback krótkiego naciśnięcia tylko jeśli czas był krótki
                     if (elapsedMs < LONG_PRESS_DURATION_MS) {
                         button->handleClick();
+                        handled = true;
                     }
+                } else {
+                    handled = true;  // Długie naciśnięcie już obsłużone
                 }
                 
                 // Usuń informację o naciśnięciu
                 pressedButtons.erase(pressIt);
+
+                if (handled) {
+                    // Zwolnij capture i odtwórz stan wizualny, ale NIE deleguj
+                    // do defaultButtonProc (żeby nie wygenerował BN_CLICKED)
+                    ReleaseCapture();
+                    InvalidateRect(hwnd, NULL, TRUE);
+                    return 0;
+                }
             }
             
             break;
@@ -109,6 +121,24 @@ LRESULT CALLBACK CustomButtonProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lP
             }
             break;
         }
+
+        // Hover tracking for owner-draw buttons
+        case WM_MOUSEMOVE: {
+            if (button && button->m_hasCustomColors && !button->m_isHovered) {
+                button->m_isHovered = true;
+                InvalidateRect(hwnd, NULL, FALSE);
+                TRACKMOUSEEVENT tme = { sizeof(TRACKMOUSEEVENT), TME_LEAVE, hwnd, 0 };
+                TrackMouseEvent(&tme);
+            }
+            break;
+        }
+        case WM_MOUSELEAVE: {
+            if (button && button->m_hasCustomColors && button->m_isHovered) {
+                button->m_isHovered = false;
+                InvalidateRect(hwnd, NULL, FALSE);
+            }
+            break;
+        }
     }
     
     // Wywołaj oryginalną procedurę okna dla standardowej obsługi
@@ -127,6 +157,7 @@ Button::Button(int x, int y, int width, int height, const char* text,
 }
 
 Button::~Button() {
+    if (m_hFont) { DeleteObject(m_hFont); m_hFont = NULL; }
     if (m_hwnd) {
         // Usuń przycisk z map
         buttonsByHwnd.erase(m_hwnd);
@@ -145,11 +176,18 @@ Button::~Button() {
 void Button::create(HWND parent) {
     // Konwersja tekstu z UTF-8 na UTF-16 dla kompatybilności z Windows API
     std::wstring wideText = StringUtils::utf8ToWide(m_text);
+
+    DWORD style = WS_CHILD | WS_VISIBLE | WS_TABSTOP;
+    if (m_hasCustomColors) {
+        style |= BS_OWNERDRAW;
+    } else {
+        style |= BS_PUSHBUTTON;
+    }
     
     m_hwnd = CreateWindowW(
         L"BUTTON",
         wideText.c_str(),
-        WS_CHILD | WS_VISIBLE | BS_PUSHBUTTON,
+        style,
         m_x, m_y,
         m_width, m_height,
         parent,
@@ -265,4 +303,109 @@ void checkForLongPresses() {
         }
         ++it;
     }
+}
+
+// Owner-draw styling methods
+
+void Button::setBackColor(COLORREF color) {
+    m_backColor = color;
+    m_hasCustomColors = true;
+    if (m_hwnd) {
+        LONG style = GetWindowLongW(m_hwnd, GWL_STYLE);
+        if (!(style & BS_OWNERDRAW)) {
+            style = (style & ~0x0FL) | BS_OWNERDRAW;
+            SetWindowLongW(m_hwnd, GWL_STYLE, style);
+        }
+        InvalidateRect(m_hwnd, NULL, TRUE);
+    }
+}
+
+void Button::setTextColor(COLORREF color) {
+    m_textColor = color;
+    m_hasCustomColors = true;
+    if (m_hwnd) InvalidateRect(m_hwnd, NULL, TRUE);
+}
+
+void Button::setHoverColor(COLORREF color) {
+    m_hoverColor = color;
+}
+
+void Button::setFont(const wchar_t* fontName, int size, bool bold) {
+    if (m_hFont) DeleteObject(m_hFont);
+    m_hFont = CreateFontW(
+        -size, 0, 0, 0,
+        bold ? FW_SEMIBOLD : FW_NORMAL,
+        FALSE, FALSE, FALSE,
+        DEFAULT_CHARSET,
+        OUT_DEFAULT_PRECIS, CLIP_DEFAULT_PRECIS,
+        CLEARTYPE_QUALITY, DEFAULT_PITCH | FF_DONTCARE,
+        fontName
+    );
+    if (m_hwnd) {
+        if (!m_hasCustomColors) {
+            SendMessageW(m_hwnd, WM_SETFONT, (WPARAM)m_hFont, TRUE);
+        } else {
+            InvalidateRect(m_hwnd, NULL, TRUE);
+        }
+    }
+}
+
+void Button::drawOwnerDraw(DRAWITEMSTRUCT* dis) {
+    int savedDC = SaveDC(dis->hDC);
+
+    bool pressed = (dis->itemState & ODS_SELECTED) != 0;
+    bool focused = (dis->itemState & ODS_FOCUS) != 0;
+    bool disabled = (dis->itemState & ODS_DISABLED) != 0;
+
+    // Determine background color
+    COLORREF bg;
+    if (disabled) {
+        bg = RGB(60, 60, 70);
+    } else if (pressed && m_backColor != CLR_INVALID) {
+        bg = RGB(GetRValue(m_backColor) * 3 / 4,
+                 GetGValue(m_backColor) * 3 / 4,
+                 GetBValue(m_backColor) * 3 / 4);
+    } else if (m_isHovered && m_hoverColor != CLR_INVALID) {
+        bg = m_hoverColor;
+    } else if (m_backColor != CLR_INVALID) {
+        bg = m_backColor;
+    } else {
+        bg = GetSysColor(COLOR_BTNFACE);
+    }
+
+    // Fill rounded rectangle
+    HBRUSH hBrush = CreateSolidBrush(bg);
+    HPEN hPen = CreatePen(PS_SOLID, 1, bg);
+    HBRUSH oldBrush = (HBRUSH)SelectObject(dis->hDC, hBrush);
+    HPEN oldPen = (HPEN)SelectObject(dis->hDC, hPen);
+    RoundRect(dis->hDC, dis->rcItem.left, dis->rcItem.top,
+              dis->rcItem.right, dis->rcItem.bottom, 8, 8);
+    SelectObject(dis->hDC, oldBrush);
+    SelectObject(dis->hDC, oldPen);
+    DeleteObject(hBrush);
+    DeleteObject(hPen);
+
+    // Select font
+    if (m_hFont) SelectObject(dis->hDC, m_hFont);
+
+    // Draw text
+    COLORREF fg = disabled ? RGB(100, 100, 110)
+                 : (m_textColor != CLR_INVALID ? m_textColor
+                    : GetSysColor(COLOR_BTNTEXT));
+    SetTextColor(dis->hDC, fg);
+    SetBkMode(dis->hDC, TRANSPARENT);
+
+    wchar_t text[256];
+    GetWindowTextW(dis->hwndItem, text, 256);
+    DrawTextW(dis->hDC, text, -1, &dis->rcItem,
+              DT_CENTER | DT_VCENTER | DT_SINGLELINE);
+
+    // Focus indicator
+    if (focused && !disabled) {
+        RECT rc = dis->rcItem;
+        InflateRect(&rc, -3, -3);
+        DrawFocusRect(dis->hDC, &rc);
+    }
+
+    RestoreDC(dis->hDC, savedDC);
 }
