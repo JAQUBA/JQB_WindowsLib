@@ -82,6 +82,13 @@ std::string vkToName(UINT vk) {
         case VK_OEM_2:      return "/";
         case VK_OEM_5:      return "\\";
         case VK_OEM_3:      return "`";
+        case VK_VOLUME_MUTE:       return "Mute";
+        case VK_VOLUME_DOWN:       return "Vol-";
+        case VK_VOLUME_UP:         return "Vol+";
+        case VK_MEDIA_NEXT_TRACK:  return "Next";
+        case VK_MEDIA_PREV_TRACK:  return "Prev";
+        case VK_MEDIA_STOP:        return "Stop";
+        case VK_MEDIA_PLAY_PAUSE:  return "Play/Pause";
         default: {
             char buf[8];
             snprintf(buf, sizeof(buf), "0x%02X", vk);
