@@ -103,6 +103,8 @@ scripts/
 │   ├── UIComponent.h      — abstract interface (create, getId, getHandle)
 │   ├── SimpleWindow/       — main window (manages components, WindowProc) ⚠ singleton
 │   ├── OverlayWindow/      — overlay window (raw WinAPI, always-on-top, double-buffered GDI, context menu, ConfigManager persistence)
+│   ├── TrayIcon/           — system tray icon (Shell_NotifyIcon, context menu, callbacks)
+│   ├── LogWindow/          — standalone log/console window (EDIT readonly, persistence, configurable colors)
 │   ├── Button/             — button (onClick + onLongClick ≥ 800ms)
 │   ├── Label/              — label (wchar_t*, Unicode, setFont/setTextColor/setBackColor)
 │   ├── Select/             — ComboBox (onChange, link to vector)
@@ -260,6 +262,72 @@ overlay->close();
 > Right-click on overlay → built-in context menu (always-on-top, background/text chroma key colors, close).
 > Subclass can extend the menu via `onBuildContextMenu(HMENU)` + `onMenuCommand(int)`.
 > Base menu IDs: 9100–9149. Subclass IDs: 9150+.
+
+### TrayIcon — System Tray Icon
+
+```cpp
+#include <UI/TrayIcon/TrayIcon.h>
+
+TrayIcon* tray = new TrayIcon();
+tray->create(hwnd, 101, L"My App");      // owner HWND, icon resource ID, tooltip
+tray->setMenuLabels(L"Show", L"Exit");   // context menu labels (default: "Show"/"Exit")
+
+tray->onRestore([]() {
+    ShowWindow(hwnd, SW_SHOW);
+    ShowWindow(hwnd, SW_RESTORE);
+    SetForegroundWindow(hwnd);
+    tray->hide();
+});
+
+tray->onExit([]() {                     // optional — default: PostMessage(WM_CLOSE)
+    PostMessageW(hwnd, WM_CLOSE, 0, 0);
+});
+
+tray->show();                            // add icon to system tray
+tray->hide();                            // remove from tray
+tray->remove();                          // cleanup on exit
+```
+
+Integrate with `SimpleWindow` via `SetWindowSubclass()` to intercept `SC_MINIMIZE`:
+```cpp
+static LRESULT CALLBACK TrayProc(HWND hwnd, UINT msg, WPARAM wParam,
+                                  LPARAM lParam, UINT_PTR, DWORD_PTR) {
+    if (tray->processMessage(msg, wParam, lParam)) return 0;
+    if (msg == WM_SYSCOMMAND && (wParam & 0xFFF0) == SC_MINIMIZE) {
+        ShowWindow(hwnd, SW_HIDE);
+        tray->show();
+        return 0;
+    }
+    return DefSubclassProc(hwnd, msg, wParam, lParam);
+}
+SetWindowSubclass(window->getHandle(), TrayProc, 1, 0);
+```
+
+> Command IDs: `TrayIcon::CMD_SHOW` (9200), `TrayIcon::CMD_EXIT` (9201).
+> Message: `WM_TRAYICON` (`WM_APP + 100`).
+
+### LogWindow — Standalone Log Window
+
+```cpp
+#include <UI/LogWindow/LogWindow.h>
+
+LogWindow* logWin = new LogWindow();
+logWin->setTitle(L"My App — Logs");       // window title
+logWin->setFont(L"Consolas", 14);         // font (before open)
+logWin->setTextColor(RGB(170, 180, 195)); // text color (before open)
+logWin->setBackColor(RGB(22, 22, 28));    // background color (before open)
+logWin->enablePersistence(config, "logwin"); // auto-save/load position
+
+logWin->open(parentHwnd);                 // show log window
+logWin->appendMessage(L"Hello!");         // add log line
+logWin->clear();                          // clear all
+logWin->close();                          // close and save position
+logWin->isOpen();                         // check state
+```
+
+> Uses raw WinAPI `EDIT` control (readonly, multiline). Auto-scrolls on append.
+> Position saved to ConfigManager as `prefix_x`, `prefix_y`, `prefix_w`, `prefix_h`.
+> WndClass name: `JQB_LogWindow`.
 
 ---
 
@@ -458,6 +526,8 @@ baudrate=9600
 30. **Control IDs 1000-8999** (auto), **Menu IDs 9000+** (manual), **Context menu IDs 9100+** — prevents collisions
 31. **OverlayWindow** — base overlay window class with `virtual onPaint()`, double-buffered GDI, always-on-top, context menu (chroma key colors), `enablePersistence(config, prefix)` for auto-save/load position and style
 32. **ProgressBar custom colors** — `setColor()` / `setBackColor()` automatically disable visual styles on the control (via `uxtheme.dll` → `SetWindowTheme`) to ensure `PBM_SETBARCOLOR` works with Common Controls v6
+33. **TrayIcon** — system tray icon (`UI/TrayIcon/TrayIcon.h`), `create()` / `show()` / `hide()` / `remove()`, configurable menu labels via `setMenuLabels()`, `onRestore()` + `onExit()` callbacks, integrate with `SimpleWindow` via `SetWindowSubclass()` + `processMessage()`. IDs: 9200-9201. Message: `WM_TRAYICON` (`WM_APP + 100`).
+34. **LogWindow** — standalone log window (`UI/LogWindow/LogWindow.h`), `open()` / `close()` / `appendMessage()` / `clear()`, configurable font/colors via `setFont()` / `setTextColor()` / `setBackColor()` (call before `open()`), `enablePersistence(config, prefix)` for position auto-save. Not a `UIComponent` — standalone WinAPI window with `GWLP_USERDATA` pattern.
 
 ### Typical Application Layout
 
