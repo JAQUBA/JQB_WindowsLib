@@ -550,7 +550,7 @@ baudrate=9600
 16. **Static linking:** Resulting `.exe` needs no extra DLLs (system dependencies loaded dynamically)
 17. **Resources (icon):** `resources.rc` in project root, compiled automatically
 18. **TextArea is readonly** — for editable fields use `InputField`
-19. **Chart** automatically removes old data and limits FPS (`setTimeWindow()`, `setRefreshRate()`)
+19. **Chart** automatically removes old data and limits FPS (`setTimeWindow(double)`, `setRefreshRate()`). Supports `setTriggerEnabled(true)` for oscilloscope-style rising zero-crossing sync (backward search, 3× data retention). `setLineWidth(int)` controls data line width (default 2).
 20. **ValueDisplay** supports double-buffering, `DisplayConfig` (colors, fonts, proportions), custom `ValueFormatter`
 21. **TabControl::getTabPage()** returns panel HWND — place child controls on it
 22. **Dynamic DLL loading:** IO modules (Serial, BLE, HID) and ImageView load their DLLs via `LoadLibrary`/`GetProcAddress` in `init()`. Only `gdi32` and `comctl32` are statically linked.
@@ -566,9 +566,9 @@ baudrate=9600
 32. **ProgressBar custom colors** — `setColor()` / `setBackColor()` automatically disable visual styles on the control (via `uxtheme.dll` → `SetWindowTheme`) to ensure `PBM_SETBARCOLOR` works with Common Controls v6
 33. **TrayIcon** — system tray icon (`UI/TrayIcon/TrayIcon.h`), `create()` / `show()` / `hide()` / `remove()`, configurable menu labels via `setMenuLabels()`, `onRestore()` + `onExit()` callbacks, integrate with `SimpleWindow` via `SetWindowSubclass()` + `processMessage()`. IDs: 9200-9201. Message: `WM_TRAYICON` (`WM_APP + 100`).
 34. **LogWindow** — standalone log window (`UI/LogWindow/LogWindow.h`), `open()` / `close()` / `appendMessage()` / `clear()`, configurable font/colors via `setFont()` / `setTextColor()` / `setBackColor()` (call before `open()`), `enablePersistence(config, prefix)` for position auto-save. Not a `UIComponent` — standalone WinAPI window with `GWLP_USERDATA` pattern.
-35. **AudioEngine** — `<IO/Audio/AudioEngine.h>`, `startOutput(deviceIndex)` / `startInput(deviceIndex)` / `stopOutput()` / `stopInput()`, thread-safe snapshots via `getOutputSnapshot()` / `getInputSnapshot()` (protected by `CRITICAL_SECTION`). `winmm` linked automatically by `compile_resources.py`.
+35. **AudioEngine** — `<IO/Audio/AudioEngine.h>`, `startOutput(deviceIndex)` / `startInput(deviceIndex)` / `stopOutput()` / `stopInput()`, thread-safe snapshots via `getOutputSnapshot()` / `getInputSnapshot()` (protected by `CRITICAL_SECTION`). Triple-buffering (`AUDIO_NUM_BUFFERS=3`). Auto sample rate negotiation: `setSampleRate(preferred)` + `startOutput()`/`startInput()` try 192k→96k→48k→44.1k. `getActualSampleRate()` returns the negotiated rate. `winmm` linked automatically by `compile_resources.py`.
 36. **WaveGen** — `engine.getWaveGen()` returns `WaveGen&`. `setWaveform()`, `setFrequency()`, `setAmplitude()`, `resetPhase()`. Enum: `WAVE_SINE`, `WAVE_SAWTOOTH`, `WAVE_TRIANGLE`, `WAVE_SQUARE`, `WAVE_WHITE_NOISE`.
-37. **Audio constants** — `AUDIO_SAMPLE_RATE` (44100), `AUDIO_BUFFER_SAMPLES` (2048), `AUDIO_DOWNSAMPLE` (8), `AUDIO_SNAPSHOT_SIZE` (256). Configurable downsample via `engine.setDownsampleFactor()`.
+37. **Audio constants** — `AUDIO_SAMPLE_RATE` (48000 default/fallback), `AUDIO_BUFFER_SAMPLES` (4096), `AUDIO_NUM_BUFFERS` (3), `AUDIO_DOWNSAMPLE` (8 default), `AUDIO_SNAPSHOT_SIZE` (`AUDIO_BUFFER_SAMPLES`). Configurable downsample via `engine.setDownsampleFactor()`. Configurable sample rate via `engine.setSampleRate()` (auto-negotiated on start).
 
 ### Typical Application Layout
 

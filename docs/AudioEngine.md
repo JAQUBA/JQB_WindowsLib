@@ -1,6 +1,6 @@
 # AudioEngine
 
-Audio I/O engine for Windows — manages `waveOut` (playback) and `waveIn` (recording) with multi-threaded double-buffering and thread-safe snapshot access for UI rendering.
+Audio I/O engine for Windows — manages `waveOut` (playback) and `waveIn` (recording) with multi-threaded triple-buffering, automatic sample rate negotiation, and thread-safe snapshot access for UI rendering.
 
 ## Include
 
@@ -8,19 +8,19 @@ Audio I/O engine for Windows — manages `waveOut` (playback) and `waveIn` (reco
 #include <IO/Audio/AudioEngine.h>
 ```
 
-> **Requires:** `winmm` library. Add `build_flags = -lwinmm` to `platformio.ini`.
+> **Requires:** `winmm` library. Linked automatically by `compile_resources.py`.
 
 ## Constants
 
-| Constant | Value | Description |
+| Constant | Default Value | Description |
 |----------|-------|-------------|
-| `AUDIO_SAMPLE_RATE` | 44100 | Sample rate (Hz) |
+| `AUDIO_SAMPLE_RATE` | 48000 | Default/fallback sample rate (Hz) |
 | `AUDIO_CHANNELS` | 1 | Mono |
 | `AUDIO_BITS` | 16 | 16-bit PCM |
-| `AUDIO_BUFFER_SAMPLES` | 2048 | Samples per buffer |
-| `AUDIO_NUM_BUFFERS` | 2 | Double-buffering |
+| `AUDIO_BUFFER_SAMPLES` | 4096 | Samples per buffer |
+| `AUDIO_NUM_BUFFERS` | 3 | Triple-buffering |
 | `AUDIO_DOWNSAMPLE` | 8 | Default downsample factor |
-| `AUDIO_SNAPSHOT_SIZE` | 256 | Snapshot size (2048/8) |
+| `AUDIO_SNAPSHOT_SIZE` | `AUDIO_BUFFER_SAMPLES` | Snapshot size (4096 at downsample=1) |
 
 ## API
 
@@ -92,6 +92,15 @@ engine.setDownsampleFactor(4);      // Change downsample (default: 8)
 int size = engine.getSnapshotSize(); // AUDIO_BUFFER_SAMPLES / factor
 ```
 
+### Sample Rate
+
+```cpp
+engine.setSampleRate(192000);           // Set preferred rate (before startOutput/startInput)
+uint32_t rate = engine.getActualSampleRate(); // Query negotiated rate
+```
+
+`startOutput()` and `startInput()` auto-negotiate the sample rate: they try the preferred rate first, then fall back through 192000 → 96000 → 48000 → 44100 Hz until the device accepts. Use `getActualSampleRate()` after starting to get the actual rate used.
+
 ## Architecture
 
 ```
@@ -117,6 +126,8 @@ int size = engine.getSnapshotSize(); // AUDIO_BUFFER_SAMPLES / factor
 - **CALLBACK_EVENT** — waveOut/waveIn signal events when buffers complete
 - **CreateThread** — dedicated threads wait on events and refill/process buffers
 - **CRITICAL_SECTION** — protects snapshot data for thread-safe UI access
+- **Triple-buffering** — 3 buffers per direction to prevent audio stutter
+- **Auto-negotiation** — `startOutput()` / `startInput()` try multiple sample rates (192k → 96k → 48k → 44.1k)
 
 ## Usage Example
 
@@ -134,20 +145,26 @@ engine.getWaveGen().setWaveform(WAVE_SINE);
 engine.getWaveGen().setFrequency(440.0);
 engine.getWaveGen().setAmplitude(0.5);
 
+// Request high sample rate (auto-negotiates down if unsupported)
+engine.setSampleRate(192000);
+
 // Start I/O
 engine.startOutput(0);
 engine.startInput(0);
 
+// Check actual rate
+uint32_t rate = engine.getActualSampleRate(); // e.g. 48000
+
 // In loop():
-double buf[256];
+double buf[AUDIO_SNAPSHOT_SIZE];
 int count;
-if (engine.getOutputSnapshot(buf, 256, count)) {
-    for (int i = 0; i < count; i++)
-        outputChart->addDataPoint(buf[i], L"");
+if (engine.getOutputSnapshot(buf, AUDIO_SNAPSHOT_SIZE, count)) {
+    double durationMs = (double)AUDIO_BUFFER_SAMPLES / rate * 1000.0;
+    outputChart->addDataPoints(buf, count, durationMs);
 }
-if (engine.getInputSnapshot(buf, 256, count)) {
-    for (int i = 0; i < count; i++)
-        inputChart->addDataPoint(buf[i], L"");
+if (engine.getInputSnapshot(buf, AUDIO_SNAPSHOT_SIZE, count)) {
+    double durationMs = (double)AUDIO_BUFFER_SAMPLES / rate * 1000.0;
+    inputChart->addDataPoints(buf, count, durationMs);
 }
 ```
 

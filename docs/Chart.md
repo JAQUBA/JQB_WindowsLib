@@ -32,11 +32,13 @@ Chart(int x, int y, int width, int height, const char* title = "Measurements");
 | `addDataPoints(const double* values, int count, double totalDurationMs)` | `void` | Adds a batch of data points with evenly distributed timestamps |
 | `clear()` | `void` | Clears data |
 | `render(HDC hdc)` | `void` | Draws the chart (internal) |
-| `setTimeWindow(int seconds)` | `void` | X-axis time window (default 30 s) |
+| `setTimeWindow(double seconds)` | `void` | X-axis time window in seconds (default 30.0) |
 | `setColors(COLORREF grid, axis, data)` | `void` | Chart colors |
 | `setAutoScale(bool)` | `void` | Y-axis auto-scaling (default true) |
 | `setYRange(double min, double max)` | `void` | Manual Y range |
 | `setRefreshRate(int ms)` | `void` | Min. interval between redraws (default 100 ms) |
+| `setTriggerEnabled(bool)` | `void` | Enable oscilloscope-style trigger (rising zero-crossing sync) |
+| `setLineWidth(int width)` | `void` | Line width in pixels (default 2) |
 | `getHandle()` | `HWND` | Control handle |
 | `getId()` | `int` | Unique ID (auto from 5000) |
 
@@ -93,10 +95,11 @@ chart->setRefreshRate(50);  // Refresh max every 50 ms (20 FPS)
 ```cpp
 // For audio or buffer-based data, use addDataPoints() to properly
 // distribute timestamps across the buffer duration:
-double buffer[256];
+double buffer[4096];
 int count;
-if (engine.getOutputSnapshot(buffer, 256, count)) {
-    double durationMs = 2048.0 / 44100.0 * 1000.0; // ~46.4 ms
+if (engine.getOutputSnapshot(buffer, 4096, count)) {
+    uint32_t rate = engine.getActualSampleRate();
+    double durationMs = (double)4096 / rate * 1000.0;
     chart->addDataPoints(buffer, count, durationMs);
 }
 ```
@@ -104,6 +107,21 @@ if (engine.getOutputSnapshot(buffer, 256, count)) {
 > **Important:** Do **not** use `addDataPoint()` in a loop for buffer data —
 > all points would get the same timestamp and overlap on the X axis.
 > Use `addDataPoints()` instead, which spreads timestamps evenly.
+> Chained batches use exact `startTime + batchDuration` as end time (virtual time base),
+> eliminating wall-clock jitter for stable oscilloscope display.
+
+### Trigger Mode (Oscilloscope)
+
+```cpp
+chart->setTriggerEnabled(true);   // Enable rising zero-crossing sync
+chart->setLineWidth(1);           // 1 px for maximum waveform precision
+chart->setTimeWindow(0.01);       // 10 ms window (sub-second)
+```
+
+When trigger is enabled:
+- Chart retains **3× timeWindow** of data to find a valid trigger point
+- Backward search: finds the **most recent** rising zero-crossing that has a full window of data after it
+- Result: stable, non-drifting waveform display regardless of data timing
 
 ## Rendering
 
