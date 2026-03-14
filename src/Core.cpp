@@ -14,14 +14,16 @@ int WINAPI wWinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPWSTR lpCmdLi
 
     setup();
     MSG msg = {};
-    while (GetMessage(&msg, NULL, 0, 0)) {
-        if (msg.message == WM_QUIT) {
-            break;
+    while (true) {
+        while (PeekMessageW(&msg, NULL, 0, 0, PM_REMOVE)) {
+            if (msg.message == WM_QUIT) {
+                return (int)msg.wParam;
+            }
+            TranslateMessage(&msg);
+            DispatchMessage(&msg);
         }
-        TranslateMessage(&msg);
-        DispatchMessage(&msg);
-        
         loop();
+        Sleep(1);
     }
     
     return (int)msg.wParam;
