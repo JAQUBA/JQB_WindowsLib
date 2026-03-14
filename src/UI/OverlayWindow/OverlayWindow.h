@@ -33,6 +33,8 @@ public:
     // Wygląd
     void setAlwaysOnTop(bool onTop);
     bool isAlwaysOnTop() const { return m_alwaysOnTop; }
+    void setToolWindow(bool hidden);
+    bool isToolWindow() const { return m_toolWindow; }
     void setBackgroundColor(COLORREF color);
     void setTextColor(COLORREF color);
     COLORREF getBackgroundColor() const { return m_bgColor; }
@@ -71,6 +73,7 @@ private:
     HWND        m_hwnd          = NULL;
     HWND        m_parentHwnd    = NULL;
     bool        m_alwaysOnTop   = true;
+    bool        m_toolWindow    = false;
 
     int         m_posX;
     int         m_posY;
@@ -89,6 +92,7 @@ private:
 
 // ID menu kontekstowego — bazowe (9100–9149), podklasy: 9150+
 #define IDM_OVL_ALWAYS_ON_TOP  9100
+#define IDM_OVL_TOOL_WINDOW    9105
 #define IDM_OVL_BG_BLACK       9101
 #define IDM_OVL_BG_GREEN       9102
 #define IDM_OVL_BG_BLUE        9103

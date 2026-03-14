@@ -47,7 +47,7 @@ bool OverlayWindow::open(HWND parentHwnd) {
     // Wczytaj zapisaną pozycję (jeśli persistence włączone)
     loadPosition();
 
-    DWORD exStyle = WS_EX_TOOLWINDOW; // Bez ikony na taskbarze
+    DWORD exStyle = m_toolWindow ? WS_EX_TOOLWINDOW : WS_EX_APPWINDOW;
     if (m_alwaysOnTop) exStyle |= WS_EX_TOPMOST;
 
     m_hwnd = CreateWindowExW(
@@ -88,6 +88,19 @@ void OverlayWindow::setAlwaysOnTop(bool onTop) {
     if (m_hwnd) {
         SetWindowPos(m_hwnd, onTop ? HWND_TOPMOST : HWND_NOTOPMOST,
                      0, 0, 0, 0, SWP_NOMOVE | SWP_NOSIZE);
+    }
+}
+
+void OverlayWindow::setToolWindow(bool hidden) {
+    m_toolWindow = hidden;
+    if (m_hwnd) {
+        LONG_PTR exStyle = GetWindowLongPtrW(m_hwnd, GWL_EXSTYLE);
+        exStyle &= ~(WS_EX_TOOLWINDOW | WS_EX_APPWINDOW);
+        exStyle |= hidden ? WS_EX_TOOLWINDOW : WS_EX_APPWINDOW;
+        SetWindowLongPtrW(m_hwnd, GWL_EXSTYLE, exStyle);
+        // Wymuszenie odświeżenia ramki i widoczności na taskbarze
+        SetWindowPos(m_hwnd, NULL, 0, 0, 0, 0,
+                     SWP_NOMOVE | SWP_NOSIZE | SWP_NOZORDER | SWP_FRAMECHANGED);
     }
 }
 
@@ -132,6 +145,7 @@ void OverlayWindow::savePosition() {
     m_config->setValue(m_configPrefix + "_w",      std::to_string(m_width));
     m_config->setValue(m_configPrefix + "_h",      std::to_string(m_height));
     m_config->setValue(m_configPrefix + "_ontop",  m_alwaysOnTop ? "1" : "0");
+    m_config->setValue(m_configPrefix + "_hidden", m_toolWindow  ? "1" : "0");
     m_config->setValue(m_configPrefix + "_bg",     std::to_string(m_bgColor));
     m_config->setValue(m_configPrefix + "_text",   std::to_string(m_textColor));
 }
@@ -148,6 +162,7 @@ void OverlayWindow::loadPosition() {
     m_width  = std::stoi(sw);
     m_height = std::stoi(sh);
     m_alwaysOnTop = m_config->getValue(m_configPrefix + "_ontop", "1") == "1";
+    m_toolWindow  = m_config->getValue(m_configPrefix + "_hidden", "0") == "1";
 
     std::string bg = m_config->getValue(m_configPrefix + "_bg", "");
     std::string tx = m_config->getValue(m_configPrefix + "_text", "");
@@ -191,6 +206,9 @@ LRESULT CALLBACK OverlayWindow::WndProc(HWND hwnd, UINT msg, WPARAM wp, LPARAM l
             switch (cmdId) {
                 case IDM_OVL_ALWAYS_ON_TOP:
                     self->setAlwaysOnTop(!self->m_alwaysOnTop);
+                    break;
+                case IDM_OVL_TOOL_WINDOW:
+                    self->setToolWindow(!self->m_toolWindow);
                     break;
                 case IDM_OVL_BG_BLACK:
                     self->setBackgroundColor(RGB(0, 0, 0));
@@ -289,6 +307,8 @@ void OverlayWindow::showContextMenu() {
     // Domyślne pozycje
     AppendMenuW(menu, MF_STRING | (m_alwaysOnTop ? MF_CHECKED : MF_UNCHECKED),
                 IDM_OVL_ALWAYS_ON_TOP, L"Zawsze na wierzchu");
+    AppendMenuW(menu, MF_STRING | (m_toolWindow ? MF_CHECKED : MF_UNCHECKED),
+                IDM_OVL_TOOL_WINDOW, L"Ukryj na pasku zada\x0144");
 
     AppendMenuW(menu, MF_SEPARATOR, 0, NULL);
 
