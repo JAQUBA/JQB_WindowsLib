@@ -118,20 +118,26 @@ void Chart::addDataPoints(const double* values, int count, double totalDurationM
     auto now = std::chrono::steady_clock::now();
     auto batchDuration = std::chrono::microseconds(static_cast<long long>(totalDurationMs * 1000.0));
     
-    // Chain batches for continuity; only break on large gaps
+    // Virtual time base: batches are spaced at exactly totalDurationMs
+    // regardless of poll jitter. Like an oscilloscope — time derived from
+    // sample rate, not from when the UI thread happened to read the data.
     auto startTime = now - batchDuration;
+    auto endTime = now;
     bool gapDetected = false;
+    
     if (m_hasBatchHistory) {
         auto gap = std::chrono::duration_cast<std::chrono::microseconds>(now - m_lastBatchEnd);
         if (gap < batchDuration * 3) {
+            // Chain: start where previous batch ended, advance by exact duration
             startTime = m_lastBatchEnd;
+            endTime = startTime + batchDuration;
         } else {
             gapDetected = true;
         }
     }
     
     auto totalSpan = std::chrono::duration_cast<std::chrono::steady_clock::duration>(
-        now - startTime);
+        endTime - startTime);
     
     for (int i = 0; i < count; i++) {
         DataPoint point;
@@ -142,7 +148,7 @@ void Chart::addDataPoints(const double* values, int count, double totalDurationM
         m_dataPoints.push_back(point);
     }
     
-    m_lastBatchEnd = now;
+    m_lastBatchEnd = endTime;
     m_hasBatchHistory = true;
     
     cleanOldDataPoints();
@@ -163,11 +169,13 @@ void Chart::cleanOldDataPoints() {
         return;
     }
     
-    auto now = std::chrono::steady_clock::now();
+    // Use latest data timestamp as reference (not wall-clock)
+    // so virtual time base doesn't cause premature cleanup
+    auto refTime = m_dataPoints.back().timestamp;
     // Keep extra data when trigger is enabled (need history to search for crossings)
     double retainSec = m_triggerEnabled ? m_timeWindowSec * 3.0 : m_timeWindowSec;
     auto cutoffUs = std::chrono::microseconds(static_cast<long long>(retainSec * 1000000.0));
-    auto cutoff = now - cutoffUs;
+    auto cutoff = refTime - cutoffUs;
     
     // Usuń punkty starsze niż okno czasowe
     while (!m_dataPoints.empty() && m_dataPoints.front().timestamp < cutoff) {
