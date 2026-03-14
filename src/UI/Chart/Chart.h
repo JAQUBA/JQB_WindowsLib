@@ -16,6 +16,7 @@ public:
         double value;
         std::chrono::steady_clock::time_point timestamp;
         std::wstring unit;
+        bool isNewSegment = false;
     };
 
     Chart(int x, int y, int width, int height, const char* title = "Wykres pomiarów");
@@ -23,6 +24,7 @@ public:
 
     void create(HWND parent) override;
     void addDataPoint(double value, const std::wstring& unit);
+    void addDataPoints(const double* values, int count, double totalDurationMs);
     void render(HDC hdc);
     void clear();
     
@@ -36,7 +38,7 @@ public:
     int getId() const override { return m_id; }
 
     // Ustawienia wykresu
-    void setTimeWindow(int seconds) { m_timeWindowSeconds = seconds; }
+    void setTimeWindow(double seconds) { m_timeWindowSec = seconds; }
     void setColors(COLORREF gridColor, COLORREF axisColor, COLORREF dataColor);
     void setAutoScale(bool autoScale) { m_autoScale = autoScale; }
     void setYRange(double minY, double maxY) {
@@ -47,6 +49,12 @@ public:
     
     // Ustawienie limitu odświeżania
     void setRefreshRate(int millisecondsInterval) { m_refreshInterval = millisecondsInterval; }
+
+    // Trigger mode — oscilloscope-style rising zero-crossing sync
+    void setTriggerEnabled(bool enabled) { m_triggerEnabled = enabled; }
+
+    // Line width for data rendering (default: 2)
+    void setLineWidth(int width) { m_lineWidth = width; }
 
 private:
     int m_x;
@@ -59,7 +67,7 @@ private:
     static int s_nextId;
 
     std::deque<DataPoint> m_dataPoints;
-    int m_timeWindowSeconds = 30; // Domyślnie pokazuje 30 sekund
+    double m_timeWindowSec = 30.0; // Domyślnie pokazuje 30 sekund
     
     COLORREF m_gridColor = RGB(80, 80, 80);
     COLORREF m_axisColor = RGB(200, 200, 200);
@@ -81,6 +89,14 @@ private:
     
     // Funkcja do usuwania starych punktów danych
     void cleanOldDataPoints();
+    
+    // Trigger mode (oscilloscope-style zero-crossing sync)
+    bool m_triggerEnabled = false;
+    int m_lineWidth = 2;
+
+    // Tracking batch continuity
+    std::chrono::steady_clock::time_point m_lastBatchEnd;
+    bool m_hasBatchHistory = false;
     
     // Funkcje pomocnicze do skalowania danych
     double getMinValue() const;

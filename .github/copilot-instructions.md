@@ -24,7 +24,7 @@ Enable rapid creation of desktop tools (configurators, monitors, dashboards) for
 
 ### Linked Libraries
 
-**Statically** (always): `gdi32`, `comctl32`
+**Statically** (always): `gdi32`, `comctl32`, `winmm`
 
 **Dynamically** (LoadLibrary/GetProcAddress in `init()`):
 
@@ -50,7 +50,7 @@ The script `scripts/compile_resources.py` runs automatically via PlatformIO and 
 | `-std=c++17` | C++ standard required by the library |
 | `-Wl,-subsystem,windows` | Build as Windows application (no console) |
 | `-static-libgcc -static-libstdc++ -static` | Static linking |
-| `-lgdi32 -lcomctl32` | Required Windows libraries |
+| `-lgdi32 -lcomctl32 -lwinmm` | Required Windows libraries |
 | Resource compilation `resources.rc` | Icon and other Windows resources |
 
 > **Do not declare these flags manually in `platformio.ini`** — they are added automatically.
@@ -117,6 +117,7 @@ scripts/
 │   ├── ImageView/          — images (GDI+, BMP/PNG/JPG, scale modes)
 │   └── TabControl/         — tabs with panels
 ├── IO/
+│   ├── Audio/              — Audio I/O (waveOut/waveIn, WaveGen, threaded double-buffering)
 │   ├── Serial/             — COM port (threaded receive, auto-reconnect)
 │   ├── BLE/                — Bluetooth LE (SetupAPI, GATT, overlapped I/O, scan/connect/notify/write)
 │   └── HID/                — USB HID (Feature Reports, device enumeration)
@@ -467,6 +468,43 @@ hid.setFeatureReport(2, buf, 7);     // Write Feature Report
 hid.close();                         // Close
 ```
 
+### Audio (waveOut / waveIn)
+
+```cpp
+#include <IO/Audio/AudioEngine.h>
+
+AudioEngine engine;
+
+// Enumerate devices
+auto outputs = engine.enumOutputDevices();
+auto inputs  = engine.enumInputDevices();
+
+// Configure waveform generator
+engine.getWaveGen().setWaveform(WAVE_SINE);
+engine.getWaveGen().setFrequency(440.0);
+engine.getWaveGen().setAmplitude(0.5);
+
+// Start output / input
+engine.startOutput(0);          // device index
+engine.startInput(0);
+
+// In loop() — read thread-safe snapshots
+double buf[256];
+int count;
+if (engine.getOutputSnapshot(buf, 256, count)) {
+    for (int i = 0; i < count; i++)
+        chart->addDataPoint(buf[i], L"");
+}
+if (engine.getInputSnapshot(buf, 256, count)) {
+    // process input data...
+}
+
+engine.stopOutput();
+engine.stopInput();
+```
+
+> Requires `winmm` — linked automatically by `compile_resources.py`.
+
 ---
 
 ## Application Configuration
@@ -528,6 +566,9 @@ baudrate=9600
 32. **ProgressBar custom colors** — `setColor()` / `setBackColor()` automatically disable visual styles on the control (via `uxtheme.dll` → `SetWindowTheme`) to ensure `PBM_SETBARCOLOR` works with Common Controls v6
 33. **TrayIcon** — system tray icon (`UI/TrayIcon/TrayIcon.h`), `create()` / `show()` / `hide()` / `remove()`, configurable menu labels via `setMenuLabels()`, `onRestore()` + `onExit()` callbacks, integrate with `SimpleWindow` via `SetWindowSubclass()` + `processMessage()`. IDs: 9200-9201. Message: `WM_TRAYICON` (`WM_APP + 100`).
 34. **LogWindow** — standalone log window (`UI/LogWindow/LogWindow.h`), `open()` / `close()` / `appendMessage()` / `clear()`, configurable font/colors via `setFont()` / `setTextColor()` / `setBackColor()` (call before `open()`), `enablePersistence(config, prefix)` for position auto-save. Not a `UIComponent` — standalone WinAPI window with `GWLP_USERDATA` pattern.
+35. **AudioEngine** — `<IO/Audio/AudioEngine.h>`, `startOutput(deviceIndex)` / `startInput(deviceIndex)` / `stopOutput()` / `stopInput()`, thread-safe snapshots via `getOutputSnapshot()` / `getInputSnapshot()` (protected by `CRITICAL_SECTION`). `winmm` linked automatically by `compile_resources.py`.
+36. **WaveGen** — `engine.getWaveGen()` returns `WaveGen&`. `setWaveform()`, `setFrequency()`, `setAmplitude()`, `resetPhase()`. Enum: `WAVE_SINE`, `WAVE_SAWTOOTH`, `WAVE_TRIANGLE`, `WAVE_SQUARE`, `WAVE_WHITE_NOISE`.
+37. **Audio constants** — `AUDIO_SAMPLE_RATE` (44100), `AUDIO_BUFFER_SAMPLES` (2048), `AUDIO_DOWNSAMPLE` (8), `AUDIO_SNAPSHOT_SIZE` (256). Configurable downsample via `engine.setDownsampleFactor()`.
 
 ### Typical Application Layout
 

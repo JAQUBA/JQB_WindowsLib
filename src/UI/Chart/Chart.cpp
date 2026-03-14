@@ -24,6 +24,8 @@ LRESULT CALLBACK ChartProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam) {
             EndPaint(hwnd, &ps);
             return 0;
         }
+        case WM_ERASEBKGND:
+            return 1;
     }
     
     return DefWindowProc(hwnd, msg, wParam, lParam);
@@ -105,7 +107,53 @@ void Chart::addDataPoint(double value, const std::wstring& unit) {
         m_dataChanged = false;
         
         if (m_hwnd) {
-            InvalidateRect(m_hwnd, NULL, TRUE);
+            InvalidateRect(m_hwnd, NULL, FALSE);
+        }
+    }
+}
+
+void Chart::addDataPoints(const double* values, int count, double totalDurationMs) {
+    if (count <= 0) return;
+    
+    auto now = std::chrono::steady_clock::now();
+    auto batchDuration = std::chrono::microseconds(static_cast<long long>(totalDurationMs * 1000.0));
+    
+    // Chain batches for continuity; only break on large gaps
+    auto startTime = now - batchDuration;
+    bool gapDetected = false;
+    if (m_hasBatchHistory) {
+        auto gap = std::chrono::duration_cast<std::chrono::microseconds>(now - m_lastBatchEnd);
+        if (gap < batchDuration * 3) {
+            startTime = m_lastBatchEnd;
+        } else {
+            gapDetected = true;
+        }
+    }
+    
+    auto totalSpan = std::chrono::duration_cast<std::chrono::steady_clock::duration>(
+        now - startTime);
+    
+    for (int i = 0; i < count; i++) {
+        DataPoint point;
+        point.value = values[i];
+        auto offset = totalSpan * i / (count > 1 ? count - 1 : 1);
+        point.timestamp = startTime + offset;
+        point.isNewSegment = (i == 0 && gapDetected);
+        m_dataPoints.push_back(point);
+    }
+    
+    m_lastBatchEnd = now;
+    m_hasBatchHistory = true;
+    
+    cleanOldDataPoints();
+    m_dataChanged = true;
+    
+    auto elapsed = std::chrono::duration_cast<std::chrono::milliseconds>(now - m_lastRefreshTime).count();
+    if (elapsed >= m_refreshInterval) {
+        m_lastRefreshTime = now;
+        m_dataChanged = false;
+        if (m_hwnd) {
+            InvalidateRect(m_hwnd, NULL, FALSE);
         }
     }
 }
@@ -116,7 +164,10 @@ void Chart::cleanOldDataPoints() {
     }
     
     auto now = std::chrono::steady_clock::now();
-    auto cutoff = now - std::chrono::seconds(m_timeWindowSeconds);
+    // Keep extra data when trigger is enabled (need history to search for crossings)
+    double retainSec = m_triggerEnabled ? m_timeWindowSec * 3.0 : m_timeWindowSec;
+    auto cutoffUs = std::chrono::microseconds(static_cast<long long>(retainSec * 1000000.0));
+    auto cutoff = now - cutoffUs;
     
     // Usuń punkty starsze niż okno czasowe
     while (!m_dataPoints.empty() && m_dataPoints.front().timestamp < cutoff) {
@@ -126,9 +177,10 @@ void Chart::cleanOldDataPoints() {
 
 void Chart::clear() {
     m_dataPoints.clear();
+    m_hasBatchHistory = false;
     
     if (m_hwnd) {
-        InvalidateRect(m_hwnd, NULL, TRUE);
+        InvalidateRect(m_hwnd, NULL, FALSE);
     }
 }
 
@@ -181,16 +233,23 @@ double Chart::getMaxValue() const {
 void Chart::render(HDC hdc) {
     RECT clientRect;
     GetClientRect(m_hwnd, &clientRect);
+    int w = clientRect.right - clientRect.left;
+    int h = clientRect.bottom - clientRect.top;
+    
+    // Double buffering
+    HDC memDC = CreateCompatibleDC(hdc);
+    HBITMAP memBitmap = CreateCompatibleBitmap(hdc, w, h);
+    HBITMAP oldBitmap = (HBITMAP)SelectObject(memDC, memBitmap);
     
     // Wypełnij tło
     HBRUSH bgBrush = CreateSolidBrush(RGB(0, 0, 0));
-    FillRect(hdc, &clientRect, bgBrush);
+    FillRect(memDC, &clientRect, bgBrush);
     DeleteObject(bgBrush);
     
     // Rysuj komponenty wykresu
-    drawGrid(hdc, clientRect);
-    drawAxes(hdc, clientRect);
-    drawData(hdc, clientRect);
+    drawGrid(memDC, clientRect);
+    drawAxes(memDC, clientRect);
+    drawData(memDC, clientRect);
     
     // Rysuj tytuł
     std::wstring wideTitle = StringUtils::utf8ToWide(m_title);
@@ -198,16 +257,23 @@ void Chart::render(HDC hdc) {
                             DEFAULT_CHARSET, OUT_OUTLINE_PRECIS, CLIP_DEFAULT_PRECIS, 
                             CLEARTYPE_QUALITY, DEFAULT_PITCH, L"Arial");
     
-    HFONT oldFont = (HFONT)SelectObject(hdc, font);
-    SetTextColor(hdc, RGB(255, 255, 255));
-    SetBkMode(hdc, TRANSPARENT);
+    HFONT oldFont = (HFONT)SelectObject(memDC, font);
+    SetTextColor(memDC, RGB(255, 255, 255));
+    SetBkMode(memDC, TRANSPARENT);
     
     RECT titleRect = clientRect;
     titleRect.bottom = 20;
-    DrawTextW(hdc, wideTitle.c_str(), -1, &titleRect, DT_CENTER | DT_SINGLELINE | DT_VCENTER);
+    DrawTextW(memDC, wideTitle.c_str(), -1, &titleRect, DT_CENTER | DT_SINGLELINE | DT_VCENTER);
     
-    SelectObject(hdc, oldFont);
+    SelectObject(memDC, oldFont);
     DeleteObject(font);
+    
+    // Blit to screen
+    BitBlt(hdc, 0, 0, w, h, memDC, 0, 0, SRCCOPY);
+    
+    SelectObject(memDC, oldBitmap);
+    DeleteObject(memBitmap);
+    DeleteDC(memDC);
 }
 
 void Chart::drawGrid(HDC hdc, const RECT& rect) {
@@ -288,11 +354,20 @@ void Chart::drawAxes(HDC hdc, const RECT& rect) {
     
     for (int i = 0; i <= verticalLines; i++) {
         int x = rect.left + 50 + i * stepX;
-        int timeValue = m_timeWindowSeconds - m_timeWindowSeconds * i / verticalLines;
+        double timeSec = m_timeWindowSec * (1.0 - (double)i / verticalLines);
         
         // Formatowanie etykiety czasu
         wchar_t label[32];
-        _snwprintf(label, 32, L"-%ds", timeValue);
+        if (timeSec < 0.0005)
+            _snwprintf(label, 32, L"0");
+        else if (m_timeWindowSec < 0.01)
+            _snwprintf(label, 32, L"-%.1fms", timeSec * 1000.0);
+        else if (m_timeWindowSec < 0.1)
+            _snwprintf(label, 32, L"-%.0fms", timeSec * 1000.0);
+        else if (m_timeWindowSec <= 5.0)
+            _snwprintf(label, 32, L"-%.2fs", timeSec);
+        else
+            _snwprintf(label, 32, L"-%ds", (int)timeSec);
         
         RECT labelRect = {x - 20, rect.bottom - 20, x + 20, rect.bottom};
         DrawTextW(hdc, label, -1, &labelRect, DT_CENTER | DT_TOP | DT_SINGLELINE);
@@ -319,7 +394,7 @@ void Chart::drawData(HDC hdc, const RECT& rect) {
     }
     
     // Utwórz pióro dla danych
-    HPEN dataPen = CreatePen(PS_SOLID, 2, m_dataColor);
+    HPEN dataPen = CreatePen(PS_SOLID, m_lineWidth, m_dataColor);
     HPEN oldPen = (HPEN)SelectObject(hdc, dataPen);
     
     // Zakres wartości Y
@@ -342,15 +417,39 @@ void Chart::drawData(HDC hdc, const RECT& rect) {
     int chartWidth = rect.right - rect.left - 60;
     int chartHeight = rect.bottom - rect.top - 40;
     
-    // Obecny czas
-    auto now = std::chrono::steady_clock::now();
+    // Czas referencyjny: najnowszy punkt danych (nie wall-clock now)
+    // Dzięki temu dane są zawsze widoczne — prawy brzeg = najnowsza próbka
+    auto refTime = m_dataPoints.back().timestamp;
+
+    // Trigger mode: rising zero-crossing sync (oscilloscope-style)
+    // Search backward from newest data — find the most recent crossing
+    // that has at least one full time window of data after it.
+    // This gives a stable display: the trigger only advances by one cycle
+    // per waveform period, and stays locked between transitions.
+    if (m_triggerEnabled && m_dataPoints.size() > 1) {
+        auto windowUs = std::chrono::microseconds(
+            static_cast<long long>(m_timeWindowSec * 1000000.0));
+        auto latestTime = m_dataPoints.back().timestamp;
+
+        for (size_t i = m_dataPoints.size() - 1; i > 0; i--) {
+            if (m_dataPoints[i - 1].value <= 0.0 && m_dataPoints[i].value > 0.0) {
+                auto timeAfter = std::chrono::duration_cast<std::chrono::microseconds>(
+                    latestTime - m_dataPoints[i].timestamp);
+                if (timeAfter >= windowUs) {
+                    // Most recent eligible trigger — set left edge here
+                    refTime = m_dataPoints[i].timestamp + windowUs;
+                    break;
+                }
+            }
+        }
+    }
     
     // Rysowanie linii łączącej punkty danych
     bool first = true;
     for (const auto& point : m_dataPoints) {
         // Oblicz pozycję X na podstawie czasu
-        auto timeDiff = std::chrono::duration_cast<std::chrono::milliseconds>(now - point.timestamp).count();
-        double xRatio = 1.0 - (double)timeDiff / (m_timeWindowSeconds * 1000.0);
+        auto timeDiff = std::chrono::duration_cast<std::chrono::microseconds>(refTime - point.timestamp).count();
+        double xRatio = 1.0 - (double)timeDiff / (m_timeWindowSec * 1000000.0);
         
         if (xRatio < 0) continue;  // Punkt poza zakresem czasu
         
@@ -362,7 +461,7 @@ void Chart::drawData(HDC hdc, const RECT& rect) {
         int x = rect.left + 50 + static_cast<int>(xRatio * chartWidth);
         int y = rect.bottom - 20 - static_cast<int>(yRatio * chartHeight);
         
-        if (first) {
+        if (first || point.isNewSegment) {
             MoveToEx(hdc, x, y, NULL);
             first = false;
         } else {
@@ -374,11 +473,14 @@ void Chart::drawData(HDC hdc, const RECT& rect) {
     SelectObject(hdc, oldPen);
     DeleteObject(dataPen);
     
+    // Pomijaj kropki dla gęstych danych
+    if (m_dataPoints.size() > 200) return;
+    
     // Narysuj punkty danych
     for (const auto& point : m_dataPoints) {
         // Oblicz pozycję X na podstawie czasu
-        auto timeDiff = std::chrono::duration_cast<std::chrono::milliseconds>(now - point.timestamp).count();
-        double xRatio = 1.0 - (double)timeDiff / (m_timeWindowSeconds * 1000.0);
+        auto timeDiff = std::chrono::duration_cast<std::chrono::microseconds>(refTime - point.timestamp).count();
+        double xRatio = 1.0 - (double)timeDiff / (m_timeWindowSec * 1000000.0);
         
         if (xRatio < 0) continue;  // Punkt poza zakresem czasu
         

@@ -121,6 +121,7 @@ if sys.platform == "win32":
     libraries = [
         "gdi32",           # Grafika GDI (używane globalnie w UI)
         "comctl32",        # Kontrolki Windows (rejestracja klas)
+        "winmm",           # Multimedia API (waveOut/waveIn — IO/Audio)
     ]
     env.Append(LIBS=libraries)
     print(f"Dodano następujące biblioteki: {', '.join(libraries)}")
