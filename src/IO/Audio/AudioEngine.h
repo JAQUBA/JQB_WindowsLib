@@ -8,7 +8,7 @@
 #include <cstdint>
 #include "WaveGen.h"
 
-#define AUDIO_SAMPLE_RATE     44100
+#define AUDIO_SAMPLE_RATE     48000
 #define AUDIO_CHANNELS        1
 #define AUDIO_BITS            16
 #define AUDIO_BUFFER_SAMPLES  4096
@@ -48,10 +48,16 @@ public:
     int  getDownsampleFactor() const     { return m_downsample; }
     int  getSnapshotSize()     const     { return AUDIO_BUFFER_SAMPLES / m_downsample; }
 
+    // Sample rate: set preferred rate, actual may differ after negotiation
+    void setSampleRate(uint32_t rate) { m_preferredRate = rate; }
+    uint32_t getActualSampleRate() const { return m_actualRate; }
+
 private:
     WaveGen m_waveGen;
     WAVEFORMATEX m_wfx;
     int m_downsample;
+    uint32_t m_preferredRate;
+    uint32_t m_actualRate;
 
     // --- Output ---
     HWAVEOUT m_hWaveOut;

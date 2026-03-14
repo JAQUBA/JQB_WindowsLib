@@ -14,6 +14,8 @@ AudioEngine::AudioEngine()
     , m_inputEvent(NULL)
     , m_inputThread(NULL)
     , m_downsample(AUDIO_DOWNSAMPLE)
+    , m_preferredRate(AUDIO_SAMPLE_RATE)
+    , m_actualRate(AUDIO_SAMPLE_RATE)
     , m_outputSnapshotCount(0)
     , m_inputSnapshotCount(0)
     , m_newOutputData(false)
@@ -44,10 +46,10 @@ void AudioEngine::initFormat() {
     ZeroMemory(&m_wfx, sizeof(m_wfx));
     m_wfx.wFormatTag      = WAVE_FORMAT_PCM;
     m_wfx.nChannels        = AUDIO_CHANNELS;
-    m_wfx.nSamplesPerSec   = AUDIO_SAMPLE_RATE;
+    m_wfx.nSamplesPerSec   = m_actualRate;
     m_wfx.wBitsPerSample   = AUDIO_BITS;
     m_wfx.nBlockAlign      = (AUDIO_CHANNELS * AUDIO_BITS) / 8;
-    m_wfx.nAvgBytesPerSec  = AUDIO_SAMPLE_RATE * m_wfx.nBlockAlign;
+    m_wfx.nAvgBytesPerSec  = m_actualRate * m_wfx.nBlockAlign;
     m_wfx.cbSize           = 0;
 }
 
@@ -91,9 +93,33 @@ bool AudioEngine::startOutput(int deviceIndex) {
     m_outputEvent = CreateEvent(NULL, FALSE, FALSE, NULL);
     if (!m_outputEvent) return false;
 
+    // Try preferred rate, then fall back to lower rates
+    static const uint32_t fallbackRates[] = { 192000, 96000, 48000, 44100 };
+    bool opened = false;
+
+    // First try preferred rate
+    m_actualRate = m_preferredRate;
+    initFormat();
     MMRESULT result = waveOutOpen(&m_hWaveOut, (UINT)deviceIndex, &m_wfx,
                                    (DWORD_PTR)m_outputEvent, 0, CALLBACK_EVENT);
-    if (result != MMSYSERR_NOERROR) {
+    if (result == MMSYSERR_NOERROR) {
+        opened = true;
+    } else {
+        // Try fallback rates (descending)
+        for (int r = 0; r < 4; r++) {
+            if (fallbackRates[r] == m_preferredRate) continue;
+            m_actualRate = fallbackRates[r];
+            initFormat();
+            result = waveOutOpen(&m_hWaveOut, (UINT)deviceIndex, &m_wfx,
+                                  (DWORD_PTR)m_outputEvent, 0, CALLBACK_EVENT);
+            if (result == MMSYSERR_NOERROR) {
+                opened = true;
+                break;
+            }
+        }
+    }
+
+    if (!opened) {
         CloseHandle(m_outputEvent);
         m_outputEvent = NULL;
         return false;
@@ -107,7 +133,7 @@ bool AudioEngine::startOutput(int deviceIndex) {
 
         waveOutPrepareHeader(m_hWaveOut, &m_outHeaders[i], sizeof(WAVEHDR));
 
-        m_waveGen.fillBuffer(m_outBuffers[i], AUDIO_BUFFER_SAMPLES, AUDIO_SAMPLE_RATE);
+        m_waveGen.fillBuffer(m_outBuffers[i], AUDIO_BUFFER_SAMPLES, m_actualRate);
         waveOutWrite(m_hWaveOut, &m_outHeaders[i], sizeof(WAVEHDR));
     }
 
@@ -163,7 +189,7 @@ DWORD WINAPI AudioEngine::outputThreadProc(LPVOID param) {
 }
 
 void AudioEngine::refillOutputBuffer(int index) {
-    m_waveGen.fillBuffer(m_outBuffers[index], AUDIO_BUFFER_SAMPLES, AUDIO_SAMPLE_RATE);
+    m_waveGen.fillBuffer(m_outBuffers[index], AUDIO_BUFFER_SAMPLES, m_actualRate);
 
     int snapCount = AUDIO_BUFFER_SAMPLES / m_downsample;
     EnterCriticalSection(&m_csOutput);
@@ -186,9 +212,31 @@ bool AudioEngine::startInput(int deviceIndex) {
     m_inputEvent = CreateEvent(NULL, FALSE, FALSE, NULL);
     if (!m_inputEvent) return false;
 
+    // Try the same rate that output negotiated, then fall back
+    static const uint32_t fallbackRates[] = { 192000, 96000, 48000, 44100 };
+    bool opened = false;
+    uint32_t tryRate = m_actualRate;  // start with output's actual rate
+
+    initFormat();  // m_actualRate already set from output
     MMRESULT result = waveInOpen(&m_hWaveIn, (UINT)deviceIndex, &m_wfx,
                                   (DWORD_PTR)m_inputEvent, 0, CALLBACK_EVENT);
-    if (result != MMSYSERR_NOERROR) {
+    if (result == MMSYSERR_NOERROR) {
+        opened = true;
+    } else {
+        for (int r = 0; r < 4; r++) {
+            if (fallbackRates[r] == tryRate) continue;
+            m_actualRate = fallbackRates[r];
+            initFormat();
+            result = waveInOpen(&m_hWaveIn, (UINT)deviceIndex, &m_wfx,
+                                 (DWORD_PTR)m_inputEvent, 0, CALLBACK_EVENT);
+            if (result == MMSYSERR_NOERROR) {
+                opened = true;
+                break;
+            }
+        }
+    }
+
+    if (!opened) {
         CloseHandle(m_inputEvent);
         m_inputEvent = NULL;
         return false;
