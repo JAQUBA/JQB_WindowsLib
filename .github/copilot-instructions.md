@@ -51,7 +51,7 @@ The script `scripts/compile_resources.py` runs automatically via PlatformIO and 
 | `-Wl,-subsystem,windows` | Build as Windows application (no console) |
 | `-static-libgcc -static-libstdc++ -static` | Static linking |
 | `-lgdi32 -lcomctl32 -lwinmm` | Required Windows libraries |
-| Resource compilation `resources.rc` | Icon and other Windows resources |
+| Resource compilation `resources/resources.rc` | Icon and other Windows resources |
 
 > **Do not declare these flags manually in `platformio.ini`** — they are added automatically.
 
@@ -548,7 +548,7 @@ baudrate=9600
 14. **Serial/BLE/HID:** Always `init()` before `connect()` / `startScan()` / `findAndOpen()` — init() loads DLLs dynamically
 15. **String conversion:** `StringUtils::utf8ToWide()` / `wideToUtf8()`
 16. **Static linking:** Resulting `.exe` needs no extra DLLs (system dependencies loaded dynamically)
-17. **Resources (icon):** `resources.rc` in project root, compiled automatically
+17. **Resources (icon):** `resources/resources.rc`, compiled automatically
 18. **TextArea is readonly** — for editable fields use `InputField`
 19. **Chart** automatically removes old data and limits FPS (`setTimeWindow(double)`, `setRefreshRate()`). Supports `setTriggerEnabled(true)` for oscilloscope-style rising zero-crossing sync (backward search, 3× data retention). `setLineWidth(int)` controls data line width (default 2).
 20. **ValueDisplay** supports double-buffering, `DisplayConfig` (colors, fonts, proportions), custom `ValueFormatter`

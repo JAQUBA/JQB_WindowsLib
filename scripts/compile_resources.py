@@ -9,7 +9,7 @@ import sys
 import platform as platform_module
 
 # Lokalizacja pliku resources.rc
-rc_file = os.path.join(env.subst("$PROJECT_DIR"), "resources.rc")
+rc_file = os.path.join(env.subst("$PROJECT_DIR"), "resources", "resources.rc")
 
 # Katalog dla skompilowanego pliku .res
 build_dir = os.path.join(env.subst("$PROJECT_DIR"), ".pio", "build")

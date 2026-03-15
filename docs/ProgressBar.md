@@ -82,6 +82,6 @@ pb->setProgress(500);   // 50%
 
 - IDs start at **6000**
 - `setColor()` / `setBackColor()` use `PBM_SETBARCOLOR` / `PBM_SETBKCOLOR`
-- **Visual styles bypass:** When custom colors are set, visual styles are automatically disabled on the control via `uxtheme.dll` → `SetWindowTheme(hwnd, L"", L"")`. This is required because Common Controls v6 (enabled by `app.manifest`) ignore `PBM_SETBARCOLOR` / `PBM_SETBKCOLOR` when visual styles are active.
+- **Visual styles bypass:** When custom colors are set, visual styles are automatically disabled on the control via `uxtheme.dll` → `SetWindowTheme(hwnd, L"", L"")`. This is required because Common Controls v6 (enabled by `resources/app.manifest`) ignore `PBM_SETBARCOLOR` / `PBM_SETBKCOLOR` when visual styles are active.
 - Marquee mode adds `PBS_MARQUEE` style to the control
 - `step(n)` uses `PBM_DELTAPOS` — adds `n` to current value

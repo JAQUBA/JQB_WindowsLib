@@ -60,7 +60,7 @@ img->loadFromFile("C:\\images\\logo.jpg");    // JPG with full path
 ### Image from Resources
 
 ```cpp
-// In resources.rc: 101 BITMAP "logo.bmp"
+// In resources/resources.rc: 101 BITMAP "logo.bmp"
 ImageView* logo = new ImageView(10, 10, 100, 100);
 window->add(logo);
 logo->loadFromResource(101);

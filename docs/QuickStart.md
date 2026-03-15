@@ -64,8 +64,9 @@ The resulting `.exe` can be found in `.pio/build/app/program.exe`.
 
 ## 4. Adding an Icon (optional)
 
-1. Place an `app.ico` file in the project root directory.
-2. Create `resources.rc`:
+1. Create a `resources/` folder in the project root.
+2. Place an `app.ico` file in the `resources/` folder.
+3. Create `resources/resources.rc`:
    ```rc
    101 ICON "app.ico"
    ```

@@ -390,11 +390,11 @@ Full API documentation for each component is available in the [docs/](docs/) dir
 
 ### How do I add an icon to my application?
 
-1. Create a `resources.rc` file in the project root:
+1. Create a `resources/resources.rc` file:
    ```rc
    1 ICON "icon.ico"
    ```
-2. Place the `icon.ico` file next to `resources.rc`.
+2. Place the `icon.ico` file in the `resources/` folder next to `resources.rc`.
 3. The `compile_resources.py` script will automatically compile resources during build.
 4. Use `SimpleWindow(width, height, "Title", 1)` — the last parameter is the icon resource ID.
 

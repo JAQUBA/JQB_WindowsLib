@@ -17,7 +17,7 @@ SimpleWindow(int width, int height, const char* title, int iconId);
 | `width` | `int` | Window width in pixels (client area) |
 | `height` | `int` | Window height in pixels (client area) |
 | `title` | `const char*` | Window title (UTF-8) |
-| `iconId` | `int` | Icon ID from resources (`resources.rc`). Pass `0` for no icon. |
+| `iconId` | `int` | Icon ID from resources (`resources/resources.rc`). Pass `0` for no icon. |
 
 ## Methods
 
