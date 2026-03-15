@@ -1,3 +1,7 @@
+// SPDX-License-Identifier: GPL-3.0-or-later
+// Copyright (C) 2026 JAQUBA (https://github.com/JAQUBA)
+// Part of JQB_WindowsLib — https://github.com/JAQUBA/JQB_WindowsLib
+
 /*
  * KeyCapture.h — Owner-draw key-capture button for recording keyboard combos
  *
