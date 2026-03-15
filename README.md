@@ -398,6 +398,24 @@ Full API documentation for each component is available in the [docs/](docs/) dir
 3. The `compile_resources.py` script will automatically compile resources during build.
 4. Use `SimpleWindow(width, height, "Title", 1)` — the last parameter is the icon resource ID.
 
+### How do I set the output .exe filename?
+
+Add a `VS_VERSION_INFO` block with `InternalName` to `resources/resources.rc`:
+```rc
+1 VERSIONINFO
+FILEVERSION 1,0,0,0
+BEGIN
+    BLOCK "StringFileInfo"
+    BEGIN
+        BLOCK "040904E4"
+        BEGIN
+            VALUE "InternalName", "MyApp"
+        END
+    END
+END
+```
+The library's `compile_resources.py` automatically reads `InternalName` and sets the output binary to `MyApp.exe`. No per-project `extra_scripts` needed.
+
 ### How do I handle Unicode / international characters?
 
 The library fully supports Unicode. Use:

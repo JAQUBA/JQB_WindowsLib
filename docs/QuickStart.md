@@ -77,6 +77,8 @@ The resulting `.exe` can be found in `.pio/build/app/program.exe`.
 
 The `compile_resources.py` script from the library automatically compiles `.rc` to `.res`.
 
+> **Output filename:** If `resources.rc` contains a `VS_VERSION_INFO` block with `InternalName`, the script automatically sets the output binary name to that value (e.g. `MyApp.exe`).
+
 ---
 
 ## 5. Application Lifecycle

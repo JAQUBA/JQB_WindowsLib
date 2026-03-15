@@ -131,3 +131,12 @@ if sys.platform == "win32":
     ]
     env.Append(LIBS=libraries)
     print(f"Dodano następujące biblioteki: {', '.join(libraries)}")
+
+    # Ustaw nazwę pliku wynikowego na podstawie InternalName z resources.rc
+    import re
+    if os.path.exists(rc_file):
+        rc_content = open(rc_file, encoding="utf-8").read()
+        m = re.search(r'VALUE\s+"InternalName"\s*,\s*"([^"]+)"', rc_content)
+        if m:
+            env.Replace(PROGNAME=m.group(1))
+            print(f"Nazwa programu ustawiona na: {m.group(1)}")

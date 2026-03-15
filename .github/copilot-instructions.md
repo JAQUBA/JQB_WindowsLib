@@ -52,8 +52,10 @@ The script `scripts/compile_resources.py` runs automatically via PlatformIO and 
 | `-static-libgcc -static-libstdc++ -static` | Static linking |
 | `-lgdi32 -lcomctl32 -lwinmm` | Required Windows libraries |
 | Resource compilation `resources/resources.rc` | Icon and other Windows resources |
+| `PROGNAME` from `VS_VERSION_INFO` | Auto-reads `InternalName` from `resources.rc` and sets output `.exe` name |
 
 > **Do not declare these flags manually in `platformio.ini`** — they are added automatically.
+> **Output filename:** If `resources/resources.rc` contains a `VS_VERSION_INFO` block with `InternalName`, the script automatically sets `PROGNAME` to that value (output binary = `InternalName.exe`). No per-project `extra_scripts` needed.
 
 ---
 
@@ -597,6 +599,7 @@ lib_deps =
 ```
 
 > C++17, UNICODE, static linking, and library flags are added automatically by `compile_resources.py`.
+> Output binary name is set automatically from `InternalName` in `resources/resources.rc` `VS_VERSION_INFO`.
 
 ### Minimal `main.cpp`
 
