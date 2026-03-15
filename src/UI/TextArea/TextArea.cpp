@@ -51,6 +51,9 @@ void TextArea::create(HWND parent) {
         return;
     }
 
+    // Zwieksz limit tekstu (domyslny ~30KB jest za maly dla logow)
+    SendMessageW(m_hwnd, EM_LIMITTEXT, 0, 0); // 0 = max (~4GB dla EDIT)
+
     // Ustawienie czcionki (opcjonalnie)
     HFONT hFont = (HFONT)GetStockObject(DEFAULT_GUI_FONT);
     if (hFont) {
@@ -87,18 +90,27 @@ void TextArea::append(const std::string& text) {
 void TextArea::append(const std::wstring& text) {
     if (!m_hwnd) return;
     
-    // Pobierz aktualną długość tekstu
+    // Ogranicz rozmiar — jesli tekst EDIT > 256KB, usun stare linie
     int textLength = GetWindowTextLengthW(m_hwnd);
+    const int MAX_TEXT_LEN = 256 * 1024;
+    if (textLength > MAX_TEXT_LEN) {
+        int cutLen = textLength / 3;
+        SendMessageW(m_hwnd, EM_SETSEL, 0, cutLen);
+        SendMessageW(m_hwnd, EM_REPLACESEL, FALSE, (LPARAM)L"");
+        textLength = GetWindowTextLengthW(m_hwnd);
+    }
     
-    // Ustaw kursor na końcu tekstu
-    SendMessage(m_hwnd, EM_SETSEL, (WPARAM)textLength, (LPARAM)textLength);
+    // Wstrzymaj odswiezanie
+    SendMessageW(m_hwnd, WM_SETREDRAW, FALSE, 0);
     
-    // Dodaj nowy tekst bez automatycznego dodawania znaków nowej linii
-    SendMessageW(m_hwnd, EM_REPLACESEL, TRUE, (LPARAM)text.c_str());
-    m_text += text;
+    // Ustaw kursor na końcu tekstu i wstaw
+    SendMessageW(m_hwnd, EM_SETSEL, (WPARAM)textLength, (LPARAM)textLength);
+    SendMessageW(m_hwnd, EM_REPLACESEL, FALSE, (LPARAM)text.c_str());
     
-    // Przewiń do końca
-    SendMessage(m_hwnd, WM_VSCROLL, SB_BOTTOM, 0);
+    // Wznow odswiezanie i przewin
+    SendMessageW(m_hwnd, WM_SETREDRAW, TRUE, 0);
+    SendMessageW(m_hwnd, WM_VSCROLL, SB_BOTTOM, 0);
+    InvalidateRect(m_hwnd, NULL, FALSE);
 }
 
 void TextArea::clear() {
