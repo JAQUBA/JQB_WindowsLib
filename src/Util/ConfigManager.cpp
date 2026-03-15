@@ -6,6 +6,19 @@
 
 ConfigManager::ConfigManager(const std::string& configFilePath)
     : m_configFilePath(configFilePath) {
+    // Sciezki relatywne rozwiazuj wzgledem katalogu .exe
+    if (!configFilePath.empty() && configFilePath[0] != '/' &&
+        configFilePath[0] != '\\' &&
+        (configFilePath.size() < 2 || configFilePath[1] != ':')) {
+        char exePath[MAX_PATH] = {};
+        if (GetModuleFileNameA(NULL, exePath, MAX_PATH) > 0) {
+            char* lastSlash = strrchr(exePath, '\\');
+            if (lastSlash) {
+                *(lastSlash + 1) = '\0';
+                m_configFilePath = std::string(exePath) + configFilePath;
+            }
+        }
+    }
     // Automatycznie próbuj wczytać konfigurację przy tworzeniu obiektu
     loadFromFile();
 }
