@@ -47,7 +47,8 @@ class SimpleWindow {
         void onDrawItem(std::function<bool(DRAWITEMSTRUCT*)> callback) { m_onDrawItem = callback; }
         
         // Nowa ujednolicona metoda do dodawania dowolnego komponentu UI
-        void add(UIComponent* component);
+        // parent — optional parent HWND (e.g. tab page); defaults to main window
+        void add(UIComponent* component, HWND parent = NULL);
         
         // Pozostawiam metody przeciążone dla zachowania kompatybilności wstecznej
         // (będą one wewnętrznie korzystały z nowej metody add(UIComponent*))

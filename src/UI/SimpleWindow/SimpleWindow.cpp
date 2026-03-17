@@ -140,9 +140,9 @@ void SimpleWindow::setBackgroundColor(COLORREF color) {
 }
 
 // Nowa główna metoda do dodawania komponentów UI
-void SimpleWindow::add(UIComponent* component) {
+void SimpleWindow::add(UIComponent* component, HWND parent) {
     if (component) {
-        component->create(m_hwnd);
+        component->create(parent ? parent : m_hwnd);
         m_components.push_back(component);
     }
 }

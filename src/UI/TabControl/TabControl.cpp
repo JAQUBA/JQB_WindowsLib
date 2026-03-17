@@ -20,15 +20,26 @@ static LRESULT CALLBACK TabPageSubclassProc(HWND hwnd, UINT uMsg, WPARAM wParam,
                                              UINT_PTR uIdSubclass, DWORD_PTR dwRefData) {
     (void)uIdSubclass;
     (void)dwRefData;
-    if (uMsg == WM_COMMAND) {
-        // Przekaż WM_COMMAND do okna głównego (root ancestor)
-        HWND hRoot = GetAncestor(hwnd, GA_ROOT);
-        if (hRoot) {
-            return SendMessageW(hRoot, uMsg, wParam, lParam);
+
+    // Forward messages to root window for event routing and theming
+    switch (uMsg) {
+        case WM_COMMAND:
+        case WM_NOTIFY:
+        case WM_CTLCOLORSTATIC:
+        case WM_CTLCOLOREDIT:
+        case WM_CTLCOLORBTN:
+        case WM_CTLCOLORLISTBOX:
+        case WM_CTLCOLORSCROLLBAR:
+        case WM_DRAWITEM: {
+            HWND hRoot = GetAncestor(hwnd, GA_ROOT);
+            if (hRoot) {
+                return SendMessageW(hRoot, uMsg, wParam, lParam);
+            }
+            break;
         }
-    }
-    if (uMsg == WM_NCDESTROY) {
-        RemoveWindowSubclass(hwnd, TabPageSubclassProc, TAB_PAGE_SUBCLASS_ID);
+        case WM_NCDESTROY:
+            RemoveWindowSubclass(hwnd, TabPageSubclassProc, TAB_PAGE_SUBCLASS_ID);
+            break;
     }
     return DefSubclassProc(hwnd, uMsg, wParam, lParam);
 }
