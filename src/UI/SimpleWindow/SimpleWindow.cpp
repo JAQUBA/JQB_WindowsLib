@@ -331,8 +331,9 @@ LRESULT CALLBACK SimpleWindow::WindowProc(HWND hwnd, UINT uMsg, WPARAM wParam, L
                 }
                 // Obsługa zmian tekstu w polach edycji (InputField)
                 else if (notificationCode == EN_CHANGE) {
+                    HWND ctrlHwnd = (HWND)lParam;
                     for (auto component : s_instance->m_components) {
-                        if (component->getId() == controlId) {
+                        if (component->getHandle() == ctrlHwnd) {
                             component->handleTextChange();
                             break;
                         }
