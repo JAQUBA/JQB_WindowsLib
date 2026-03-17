@@ -116,6 +116,7 @@ scripts/
 │   ├── ProgressBar/        — progress bar (0-100%, Marquee, custom colors with theme bypass)
 │   ├── Chart/              — real-time chart (GDI, auto-scale, time-window)
 │   ├── ValueDisplay/       — LCD display (GDI, double-buffered, DisplayConfig)
+│   ├── CanvasWindow/       — zoomable/pannable GDI canvas (child window, double-buffered, virtual onDraw, zoom/pan/grid)
 │   ├── ImageView/          — images (GDI+, BMP/PNG/JPG, scale modes)
 │   └── TabControl/         — tabs with panels
 ├── IO/
@@ -265,6 +266,36 @@ overlay->close();
 > Right-click on overlay → built-in context menu (always-on-top, background/text chroma key colors, close).
 > Subclass can extend the menu via `onBuildContextMenu(HMENU)` + `onMenuCommand(int)`.
 > Base menu IDs: 9100–9149. Subclass IDs: 9150+.
+
+### CanvasWindow — Zoomable/Pannable Canvas
+
+```cpp
+#include <UI/CanvasWindow/CanvasWindow.h>
+
+// Subclass with custom rendering
+class MyCanvas : public CanvasWindow {
+protected:
+    void onDraw(HDC hdc, const RECT& rc) override {
+        // Use toScreenX() / toScreenY() for world→screen transforms
+        MoveToEx(hdc, (int)toScreenX(0), (int)toScreenY(0), NULL);
+        LineTo(hdc, (int)toScreenX(100), (int)toScreenY(50));
+    }
+};
+
+// Usage
+MyCanvas* canvas = new MyCanvas();
+canvas->create(parentHwnd, 0, 60, 800, 540);
+canvas->setGridVisible(true);
+canvas->setGridSpacing(10.0);
+canvas->setGridExtent(500.0, 500.0);
+canvas->setBackgroundColor(RGB(30, 30, 38));
+canvas->setGridColor(RGB(50, 50, 60));
+canvas->redraw();
+```
+
+> Child window with own WndProc (`GWLP_USERDATA` pattern). Not a `UIComponent` — manage lifetime manually.
+> Mouse: scroll = zoom towards cursor, left-drag = pan, double-click = reset view.
+> World coordinates in mm; Y-axis flipped (positive Y = up).
 
 ### TrayIcon — System Tray Icon
 
@@ -571,6 +602,7 @@ baudrate=9600
 35. **AudioEngine** — `<IO/Audio/AudioEngine.h>`, `startOutput(deviceIndex)` / `startInput(deviceIndex)` / `stopOutput()` / `stopInput()`, thread-safe snapshots via `getOutputSnapshot()` / `getInputSnapshot()` (protected by `CRITICAL_SECTION`). Triple-buffering (`AUDIO_NUM_BUFFERS=3`). Auto sample rate negotiation: `setSampleRate(preferred)` + `startOutput()`/`startInput()` try 192k→96k→48k→44.1k. `getActualSampleRate()` returns the negotiated rate. `winmm` linked automatically by `compile_resources.py`.
 36. **WaveGen** — `engine.getWaveGen()` returns `WaveGen&`. `setWaveform()`, `setFrequency()`, `setAmplitude()`, `resetPhase()`. Enum: `WAVE_SINE`, `WAVE_SAWTOOTH`, `WAVE_TRIANGLE`, `WAVE_SQUARE`, `WAVE_WHITE_NOISE`.
 37. **Audio constants** — `AUDIO_SAMPLE_RATE` (48000 default/fallback), `AUDIO_BUFFER_SAMPLES` (4096), `AUDIO_NUM_BUFFERS` (3), `AUDIO_DOWNSAMPLE` (8 default), `AUDIO_SNAPSHOT_SIZE` (`AUDIO_BUFFER_SAMPLES`). Configurable downsample via `engine.setDownsampleFactor()`. Configurable sample rate via `engine.setSampleRate()` (auto-negotiated on start).
+38. **CanvasWindow** — reusable zoomable/pannable GDI canvas (`UI/CanvasWindow/CanvasWindow.h`). `create(parent, x, y, w, h)`, `redraw()`, `resetView()`, `setGridVisible()` / `setGridSpacing()` / `setGridExtent()` / `setGridColor()`, `setBackgroundColor()`, `setDefaultZoom()` / `setDefaultPan()`. Subclass overrides `virtual onDraw(HDC, RECT)`. Coordinate helpers: `toScreenX(worldX)` / `toScreenY(worldY)`. World units in mm, Y-axis flipped. Mouse: wheel = zoom towards cursor, left-drag = pan, double-click = reset. Child window with `GWLP_USERDATA` pattern (not a `UIComponent`).
 
 ### Typical Application Layout
 
