@@ -20,6 +20,7 @@ public:
     // Opcjonalne metody obsługi zdarzeń
     virtual void handleClick() {}
     virtual void handleSelection() {}
+    virtual void handleTextChange() {}
 
     // Owner-draw rendering (return true if handled)
     virtual bool handleDrawItem(DRAWITEMSTRUCT*) { return false; }
