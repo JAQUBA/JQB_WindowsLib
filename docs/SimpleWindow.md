@@ -93,6 +93,7 @@ void setBackgroundColor(COLORREF color);  // Changes window background (WM_ERASE
 | `WM_COMMAND` + `BN_CLICKED` | `component->handleClick()` |
 | `WM_COMMAND` + `BN_PUSHED` | `startButtonPress()` → long press |
 | `WM_COMMAND` + `CBN_SELCHANGE` | `component->handleSelection()` |
+| `WM_COMMAND` + `EN_CHANGE` | `component->handleTextChange()` (matched by HWND) |
 | `WM_NOTIFY` + `TCN_SELCHANGE` | `component->handleSelection()` (TabControl) |
 | `WM_CTLCOLORSTATIC` | Custom colors for Label and TextArea |
 | `WM_TIMER` | `checkForLongPresses()` |

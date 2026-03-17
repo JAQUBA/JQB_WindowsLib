@@ -102,7 +102,7 @@ src/
 scripts/
 └── compile_resources.py   — build auto-configuration (flags, libs, resources)
 ├── UI/
-│   ├── UIComponent.h      — abstract interface (create, getId, getHandle)
+│   ├── UIComponent.h      — abstract interface (create, getId, getHandle, handleClick, handleSelection, handleTextChange)
 │   ├── SimpleWindow/       — main window (manages components, WindowProc) ⚠ singleton
 │   ├── OverlayWindow/      — overlay window (raw WinAPI, always-on-top, double-buffered GDI, context menu, ConfigManager persistence)
 │   ├── TrayIcon/           — system tray icon (Shell_NotifyIcon, context menu, callbacks)
@@ -111,7 +111,7 @@ scripts/
 │   ├── Label/              — label (wchar_t*, Unicode, setFont/setTextColor/setBackColor)
 │   ├── Select/             — ComboBox (onChange, link to vector)
 │   ├── TextArea/           — edit multiline readonly (log/console, setFont/setTextColor/setBackColor)
-│   ├── InputField/         — single-line edit (placeholder, password, maxLen)
+│   ├── InputField/         — single-line edit (placeholder, password, maxLen, onTextChange fires on every keystroke)
 │   ├── CheckBox/           — checkbox (onChange with bool)
 │   ├── ProgressBar/        — progress bar (0-100%, Marquee, custom colors with theme bypass)
 │   ├── Chart/              — real-time chart (GDI, auto-scale, time-window)
@@ -376,11 +376,11 @@ new CheckBox(x, y, w, h, "Option", false,
 );
 ```
 
-### InputField — Text Change
+### InputField — Text Change (fires on every keystroke via EN_CHANGE)
 
 ```cpp
 new InputField(x, y, w, h, "",
-    [](InputField* field, const char* text) { /* ... */ }
+    [](InputField* field, const char* text) { /* fires on every keystroke */ }
 );
 ```
 
@@ -563,7 +563,7 @@ baudrate=9600
 27. **HotkeyManager** — global `WH_KEYBOARD_LL` hook, `addHotkey(iniKey, label, default, action)`, `loadFromConfig()`, `installHook()`, built-in `showSettingsDialog(HWND)`
 28. **ConfigManager** — INI key=value, auto-save on destructor, `setValue()` / `getValue(key, default)`
 29. **LoadCursorW with IDC_ARROW** — in MinGW requires cast: `LoadCursorW(NULL, (LPCWSTR)IDC_ARROW)`
-30. **Control IDs 1000-8999** (auto), **Menu IDs 9000+** (manual), **Context menu IDs 9100+** — prevents collisions
+30. **Control IDs 1000-8999** (auto), **Menu IDs 9000+** (manual), **Context menu IDs 9100+** — prevents collisions. **Note:** Label and InputField both start at 2000 — SimpleWindow routes `EN_CHANGE` by HWND (not ID) to avoid collisions
 31. **OverlayWindow** — base overlay window class with `virtual onPaint()`, double-buffered GDI, always-on-top, context menu (chroma key colors), `enablePersistence(config, prefix)` for auto-save/load position and style
 32. **ProgressBar custom colors** — `setColor()` / `setBackColor()` automatically disable visual styles on the control (via `uxtheme.dll` → `SetWindowTheme`) to ensure `PBM_SETBARCOLOR` works with Common Controls v6
 33. **TrayIcon** — system tray icon (`UI/TrayIcon/TrayIcon.h`), `create()` / `show()` / `hide()` / `remove()`, configurable menu labels via `setMenuLabels()`, `onRestore()` + `onExit()` callbacks, integrate with `SimpleWindow` via `SetWindowSubclass()` + `processMessage()`. IDs: 9200-9201. Message: `WM_TRAYICON` (`WM_APP + 100`).

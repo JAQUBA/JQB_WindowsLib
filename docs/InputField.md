@@ -82,5 +82,6 @@ std::string value = inputField->getText();
 
 - IDs start at **2000**
 - Style: `WS_CHILD | WS_VISIBLE | WS_BORDER | ES_AUTOHSCROLL`
-- Subclassing captures `WM_CHAR` (Enter) and `WM_COMMAND` (EN_CHANGE)
+- `onTextChange` callback fires on **every keystroke** (via `EN_CHANGE` routed by `SimpleWindow`) and on **Enter** key
+- `SimpleWindow` routes `EN_CHANGE` by HWND (not control ID) to avoid ID collisions with `Label`
 - Placeholder requires Common Controls 6.0 (available by default in Windows Vista+)
