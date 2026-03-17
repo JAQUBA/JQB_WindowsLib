@@ -24,7 +24,7 @@ Enable rapid creation of desktop tools (configurators, monitors, dashboards) for
 
 ### Linked Libraries
 
-**Statically** (always): `gdi32`, `comctl32`, `winmm`
+**Statically** (always): `gdi32`, `comctl32`, `comdlg32`, `winmm`
 
 **Dynamically** (LoadLibrary/GetProcAddress in `init()`):
 

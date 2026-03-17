@@ -125,6 +125,7 @@ if sys.platform == "win32":
     libraries = [
         "gdi32",           # Grafika GDI (używane globalnie w UI)
         "comctl32",        # Kontrolki Windows (rejestracja klas)
+        "comdlg32",        # Common Dialogs (GetOpenFileName, GetSaveFileName)
         "winmm",           # Multimedia API (waveOut/waveIn — IO/Audio)
         "ole32",           # COM (CoInitialize, SHBrowseForFolder, Drag&Drop)
         "shell32",         # Shell API (SHBrowseForFolder, SHGetPathFromIDList)
