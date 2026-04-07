@@ -2,7 +2,7 @@
 
 **C++ library for building native Windows desktop applications (WinAPI) with Arduino-like programming style.**
 
-[![License: GPL-3.0](https://img.shields.io/badge/License-GPL--3.0-blue.svg)](https://www.gnu.org/licenses/gpl-3.0)
+[![License: LGPL-3.0](https://img.shields.io/badge/License-LGPL--3.0-blue.svg)](https://www.gnu.org/licenses/lgpl-3.0.html)
 [![Platform: Windows](https://img.shields.io/badge/Platform-Windows-0078d7.svg)]()
 [![Build: PlatformIO](https://img.shields.io/badge/Build-PlatformIO-orange.svg)](https://platformio.org/)
 
@@ -450,6 +450,8 @@ private:
 
 ## License
 
-[GPL-3.0-or-later](https://www.gnu.org/licenses/gpl-3.0.html)
+[LGPL-3.0-or-later](https://www.gnu.org/licenses/lgpl-3.0.html)
+
+If you distribute applications that statically link this library, make sure your distribution model also satisfies LGPL requirements for combined works, including license notice delivery and a practical relinking path for modified versions of the library.
 
 **Author:** [JAQUBA](https://github.com/JAQUBA)

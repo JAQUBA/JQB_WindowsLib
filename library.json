@@ -1,6 +1,6 @@
 {
     "name": "JQB_WindowsLib",
-    "version": "1.0.0",
+    "version": "1.0.1",
     "description": "C++ library for building native Windows desktop applications with WinAPI and Arduino-like programming style (setup/loop)",
     "keywords": "windows, winapi, gui, native, desktop, serial, ble, hid, c++17, platformio",
     "homepage": "https://github.com/JAQUBA/JQB_WindowsLib",
@@ -19,7 +19,7 @@
         "maintainer": true
       }
     ],
-    "license": "GPL-3.0-or-later",
+    "license": "LGPL-3.0-or-later",
     "frameworks": "*",
     "platforms": "native",
     "build": {
