@@ -178,6 +178,8 @@ JQB_WindowsLib/
     │   └── HID/              #   USB HID (Feature Reports)
     └── Util/                 # Utilities
         ├── StringUtils.*     #   UTF-8 ↔ UTF-16 conversions
+        ├── FileDialogs.*     #   Native folder/save dialogs with UTF-8 paths
+        ├── TimerUtils.*      #   Debounce timer helpers (KillTimer/SetTimer wrappers)
         ├── ConfigManager.*   #   INI configuration save/load
         ├── DataLogger.*      #   CSV logger with auto-timestamp
         ├── HotkeyManager.*   #   Global keyboard shortcuts (WH_KEYBOARD_LL hook)
@@ -228,6 +230,8 @@ All components inherit from `UIComponent` and implement:
 | Module | Description | Docs |
 |--------|-------------|------|
 | **StringUtils** | UTF-8 ↔ UTF-16/ANSI conversions | [docs/StringUtils.md](docs/StringUtils.md) |
+| **FileDialogs** | Native folder/save dialogs returning UTF-8 paths | [docs/FileDialogs.md](docs/FileDialogs.md) |
+| **TimerUtils** | Debounce timer helpers for WinAPI window timers | [docs/TimerUtils.md](docs/TimerUtils.md) |
 | **ConfigManager** | Configuration manager (key=value format) | [docs/ConfigManager.md](docs/ConfigManager.md) |
 | **DataLogger** | CSV logger with auto-timestamp filenames | [docs/DataLogger.md](docs/DataLogger.md) |
 | **HotkeyManager** | Global keyboard shortcuts with settings dialog | [docs/HotkeyManager.md](docs/HotkeyManager.md) |

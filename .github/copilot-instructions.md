@@ -126,9 +126,13 @@ scripts/
 │   └── HID/                — USB HID (Feature Reports, device enumeration)
 └── Util/
     ├── StringUtils.*       — UTF-8 ↔ UTF-16 ↔ ANSI, extractComPort
+    ├── FileDialogs.*       — native folder/save dialogs with UTF-8 return paths
+    ├── TimerUtils.*        — debounce timer helpers (`KillTimer`/`SetTimer` wrappers)
+        ├── NumberUtils.*       — locale-tolerant number parsing helpers (comma/dot decimal)
     ├── ConfigManager.*     — key=value save/load (INI-like, auto-save)
     ├── DataLogger.*        — generic CSV logger with auto-timestamp
     ├── HotkeyManager.*     — global keyboard shortcuts (WH_KEYBOARD_LL hook, dialog, config)
+        ├── TreePanel/          — LISTBOX-based checkable tree widget with collapsible sections
     └── Statistics.h        — header-only MIN/MAX/AVG/PEAK statistics
 ```
 
@@ -598,6 +602,8 @@ baudrate=9600
 31. **OverlayWindow** — base overlay window class with `virtual onPaint()`, double-buffered GDI, always-on-top, context menu (chroma key colors), `enablePersistence(config, prefix)` for auto-save/load position and style
 32. **ProgressBar custom colors** — `setColor()` / `setBackColor()` automatically disable visual styles on the control (via `uxtheme.dll` → `SetWindowTheme`) to ensure `PBM_SETBARCOLOR` works with Common Controls v6
 33. **TrayIcon** — system tray icon (`UI/TrayIcon/TrayIcon.h`), `create()` / `show()` / `hide()` / `remove()`, configurable menu labels via `setMenuLabels()`, `onRestore()` + `onExit()` callbacks, integrate with `SimpleWindow` via `SetWindowSubclass()` + `processMessage()`. IDs: 9200-9201. Message: `WM_TRAYICON` (`WM_APP + 100`).
+39. **NumberUtils** — `<Util/NumberUtils.h>`, `NumberUtils::parseDouble(const std::string&)` (throws on invalid input), `NumberUtils::tryParseDouble(const std::string&, double&)` (non-throwing), `NumberUtils::formatDouble(double, int decimals)`. Accepts both `'.'` and `','` as decimal separator. Use instead of inline `std::stod` with manual comma→dot replacement.
+40. **TreePanel** — `<UI/TreePanel/TreePanel.h>`, LISTBOX-based collapsible tree widget with checkboxes. Construct with `TreePanel(HWND hListbox)`. Build tree with `clear()` + `addSection()` / `addExpandGroup()` / `addItem()` / `addActionItem()`. Handle WM_COMMAND/LBN_SELCHANGE via `handleClick(idx)` — returns `true` if UI state changed (caller should call clear() + add*() to rebuild). `addItem()` accepts optional `onToggle` callback (fired after flag toggle, useful for cache invalidation side-effects). `addActionItem()` fires a callback on click. `getClickedFlag(idx)` returns the `bool*` of the clicked item (for additional app-level reactions). Indent levels: 0=section header, 1=item (2 sp), 2=sub-item (6 sp), 3=sub-sub-item (10 sp).
 34. **LogWindow** — standalone log window (`UI/LogWindow/LogWindow.h`), `open()` / `close()` / `appendMessage()` / `clear()`, configurable font/colors via `setFont()` / `setTextColor()` / `setBackColor()` (call before `open()`), `enablePersistence(config, prefix)` for position auto-save. Not a `UIComponent` — standalone WinAPI window with `GWLP_USERDATA` pattern.
 35. **AudioEngine** — `<IO/Audio/AudioEngine.h>`, `startOutput(deviceIndex)` / `startInput(deviceIndex)` / `stopOutput()` / `stopInput()`, thread-safe snapshots via `getOutputSnapshot()` / `getInputSnapshot()` (protected by `CRITICAL_SECTION`). Triple-buffering (`AUDIO_NUM_BUFFERS=3`). Auto sample rate negotiation: `setSampleRate(preferred)` + `startOutput()`/`startInput()` try 192k→96k→48k→44.1k. `getActualSampleRate()` returns the negotiated rate. `winmm` linked automatically by `compile_resources.py`.
 36. **WaveGen** — `engine.getWaveGen()` returns `WaveGen&`. `setWaveform()`, `setFrequency()`, `setAmplitude()`, `resetPhase()`. Enum: `WAVE_SINE`, `WAVE_SAWTOOTH`, `WAVE_TRIANGLE`, `WAVE_SQUARE`, `WAVE_WHITE_NOISE`.
@@ -740,6 +746,33 @@ hkMgr->showSettingsDialog(parentHwnd);  // Modal shortcut editing dialog
 ```
 
 Dialog automatically handles: shortcut list, key combo capture, restore defaults, save to INI.
+
+### FileDialogs (Folder / Save Dialogs)
+
+```cpp
+#include <Util/FileDialogs.h>
+
+std::string dir = FileDialogs::browseFolderUTF8(hwnd, L"Select folder");
+std::string out = FileDialogs::saveFileDialogUTF8(
+    hwnd,
+    L"Text Files (*.txt)\0*.txt\0All Files (*.*)\0*.*\0",
+    L"Export",
+    L"txt");
+```
+
+Both functions return UTF-8 paths and empty string on cancel.
+
+### TimerUtils (Debounce Timers)
+
+```cpp
+#include <Util/TimerUtils.h>
+
+TimerUtils::restartDebounceTimer(hwnd, 9601, 400);
+// ... on WM_TIMER:
+TimerUtils::stopTimer(hwnd, 9601);
+```
+
+Use for debounced UI reactions after text edits or rapid option changes.
 
 ---
 
