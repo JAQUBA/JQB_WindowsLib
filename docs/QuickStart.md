@@ -172,6 +172,10 @@ void setup() {
 
 ## 7. Next Steps
 
+- [Documentation Hub](README.md) — central index for all docs
 - [Component Documentation](.) — details of each component
 - [Examples](examples/) — ready-to-use demo applications
-- [Copilot Instructions](../.github/copilot-instructions.md) — after reading, Copilot writes code for you
+- [Project Blueprint](ProjectBlueprint.md) — production app structure
+- [AI Assistants Guide](AI_Assistants.md) — prompt templates for Copilot and Claude Code
+- [Copilot Instructions](../.github/copilot-instructions.md) — repository rules for GitHub Copilot
+- [Claude Instructions](../CLAUDE.md) — repository rules for Claude Code

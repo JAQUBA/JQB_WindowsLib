@@ -15,6 +15,8 @@ The examples are documentation-first: each file explains the scenario, the compo
 | [05_tabbed_app](05_tabbed_app.md) | multi-view layout | `TabControl`, `Label`, `Button` |
 | [06_ble_scanner](06_ble_scanner.md) | BLE discovery and interaction | `BLE`, `Select`, `TextArea`, `Button` |
 | [07_image_viewer](07_image_viewer.md) | image rendering | `ImageView`, `Button`, `Select` |
+| [08_engineering_canvas_app](08_engineering_canvas_app.md) | production-style engineering workflow | `CanvasWindow`, `TreePanel`, `ProgressBar`, `CreateThread` |
+| [09_document_editor_canvas](09_document_editor_canvas.md) | editor + live preview + export workflow | `RichEdit`, `CanvasWindow`, `Timer`, `InputField` |
 
 ## Recommended Reading Order
 
@@ -22,6 +24,7 @@ The examples are documentation-first: each file explains the scenario, the compo
 2. Move to [03_form_inputs](03_form_inputs.md) for standard controls.
 3. Read [02_serial_monitor](02_serial_monitor.md) or [06_ble_scanner](06_ble_scanner.md) if you are building a hardware-facing tool.
 4. Use [04_realtime_dashboard](04_realtime_dashboard.md) and [07_image_viewer](07_image_viewer.md) for richer visual workflows.
+5. Move to [08_engineering_canvas_app](08_engineering_canvas_app.md) and [09_document_editor_canvas](09_document_editor_canvas.md) for production app architecture patterns.
 
 ## How To Use These Examples
 
@@ -43,5 +46,9 @@ If you are starting a new application, the fastest path is usually:
 - [Serial](../Serial.md)
 - [BLE](../BLE.md)
 - [ImageView](../ImageView.md)
+- [TreePanel](../TreePanel.md)
+- [LogWindow](../LogWindow.md)
+- [Project Blueprint](../ProjectBlueprint.md)
+- [AI Assistants Guide](../AI_Assistants.md)
 
 These examples are intentionally small so they remain easy to scan and easy to adapt.

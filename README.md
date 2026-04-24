@@ -214,8 +214,16 @@ The repository already includes dedicated docs for most building blocks.
 
 ### Getting Started
 
+- [Documentation Hub](docs/README.md)
 - [Quick Start](docs/QuickStart.md)
 - [Examples Overview](docs/examples/README.md)
+- [Project Blueprint](docs/ProjectBlueprint.md)
+
+### AI Workflow
+
+- [AI Assistants Guide (Copilot + Claude)](docs/AI_Assistants.md)
+- [Copilot Instructions](.github/copilot-instructions.md)
+- [Claude Project Instructions](CLAUDE.md)
 
 ### Core UI
 
@@ -223,6 +231,7 @@ The repository already includes dedicated docs for most building blocks.
 - [SimpleWindow](docs/SimpleWindow.md)
 - [OverlayWindow](docs/OverlayWindow.md)
 - [CanvasWindow](docs/CanvasWindow.md)
+- [LogWindow](docs/LogWindow.md)
 
 ### Controls
 
@@ -237,6 +246,7 @@ The repository already includes dedicated docs for most building blocks.
 - [ValueDisplay](docs/ValueDisplay.md)
 - [ImageView](docs/ImageView.md)
 - [TabControl](docs/TabControl.md)
+- [TreePanel](docs/TreePanel.md)
 
 ### IO
 
@@ -260,6 +270,7 @@ JQB_WindowsLib/
 ├── library.json
 ├── LICENSE
 ├── README.md
+├── CLAUDE.md
 ├── docs/
 ├── scripts/
 │   └── compile_resources.py
