@@ -217,6 +217,7 @@ The repository already includes dedicated docs for most building blocks.
 - [Documentation Hub](docs/README.md)
 - [Quick Start](docs/QuickStart.md)
 - [Examples Overview](docs/examples/README.md)
+- [Runnable Example Projects](examples/README.md)
 - [Project Blueprint](docs/ProjectBlueprint.md)
 
 ### AI Workflow
@@ -272,6 +273,7 @@ JQB_WindowsLib/
 ├── README.md
 ├── CLAUDE.md
 ├── docs/
+├── examples/
 ├── scripts/
 │   └── compile_resources.py
 └── src/

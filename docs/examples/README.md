@@ -4,6 +4,15 @@ This directory contains compact example applications showing how the library is 
 
 The examples are documentation-first: each file explains the scenario, the components involved, and the shape of the code you would typically write in an actual project.
 
+## Runnable Projects
+
+If you want ready-to-build projects instead of documentation snippets, use:
+
+- [../../examples/01_hello_window](../../examples/01_hello_window/README.md)
+- [../../examples/02_serial_monitor](../../examples/02_serial_monitor/README.md)
+- [../../examples/03_engineering_canvas](../../examples/03_engineering_canvas/README.md)
+- [../../examples/04_document_editor_preview](../../examples/04_document_editor_preview/README.md)
+
 ## What You Will Find Here
 
 | Example | Focus | Main Components |

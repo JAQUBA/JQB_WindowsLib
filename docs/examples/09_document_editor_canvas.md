@@ -9,6 +9,10 @@ Pattern for desktop tools that combine:
 
 Useful for generators, configuration designers, and conversion utilities.
 
+Runnable project version:
+
+- [../../examples/04_document_editor_preview](../../examples/04_document_editor_preview/README.md)
+
 ## Scenario
 
 - Left side: editable text document.

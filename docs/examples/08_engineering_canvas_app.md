@@ -10,6 +10,10 @@ Production-style pattern for tools that combine:
 
 This pattern is ideal for CAM, CAD, and inspection utilities.
 
+Runnable project version:
+
+- [../../examples/03_engineering_canvas](../../examples/03_engineering_canvas/README.md)
+
 ## Suggested File Layout
 
 ```text

@@ -7,6 +7,7 @@ Use this page as the central index for building real Windows desktop tools with 
 1. [Quick Start](QuickStart.md) — first project setup and minimal app skeleton.
 2. [Examples Overview](examples/README.md) — ready-to-adapt application patterns.
 3. [Project Blueprint](ProjectBlueprint.md) — production-grade project structure inspired by real apps.
+4. [Runnable Example Projects](../examples/README.md) — complete PlatformIO projects ready to build.
 
 ## AI-Assisted Workflow
 
@@ -75,5 +76,6 @@ Use these references:
 1. Build and run the sample from [Quick Start](QuickStart.md).
 2. Read [Example 01](examples/01_hello_window.md), [Example 03](examples/03_form_inputs.md), and [Example 04](examples/04_realtime_dashboard.md).
 3. Move to [Example 08](examples/08_engineering_canvas_app.md) and [Example 09](examples/09_document_editor_canvas.md).
-4. Apply [Project Blueprint](ProjectBlueprint.md) in your own repository.
-5. Use [AI Assistants Guide](AI_Assistants.md) to accelerate refactors and feature work.
+4. Clone or copy a ready project from [../examples](../examples/README.md).
+5. Apply [Project Blueprint](ProjectBlueprint.md) in your own repository.
+6. Use [AI Assistants Guide](AI_Assistants.md) to accelerate refactors and feature work.
