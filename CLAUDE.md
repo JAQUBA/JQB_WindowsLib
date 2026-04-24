@@ -62,6 +62,7 @@ When adding features or changing behavior, update docs in the same change:
 
 - `README.md`
 - `docs/README.md`
+- `docs/UIDesignGuide.md` — **prescriptive UI layout rules**: cards, sections, accent buttons, status dot, anti-patterns
 - `docs/ProjectBlueprint.md`
 - `docs/AI_Assistants.md`
 - `docs/examples/08_engineering_canvas_app.md`

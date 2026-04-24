@@ -5,6 +5,26 @@
 #include "../SimpleWindow/SimpleWindow.h"
 #include "../Button/Button.h"
 #include "../ProgressBar/ProgressBar.h"
+#include "../TabControl/TabControl.h"
+
+// DWM dark title bar (Windows 10 1809+ — attribute 19; Windows 10 2004+ / 11 — attribute 20).
+// Loaded dynamically so we don't add a static dwmapi link requirement.
+static void applyDarkTitleBar(HWND hwnd, bool dark) {
+    if (!hwnd) return;
+    typedef HRESULT (WINAPI *PFN_DwmSetWindowAttribute)(HWND, DWORD, LPCVOID, DWORD);
+    HMODULE hDwm = LoadLibraryW(L"dwmapi.dll");
+    if (!hDwm) return;
+    auto fn = (PFN_DwmSetWindowAttribute)GetProcAddress(hDwm, "DwmSetWindowAttribute");
+    if (fn) {
+        BOOL value = dark ? TRUE : FALSE;
+        // 20 = DWMWA_USE_IMMERSIVE_DARK_MODE (Win10 2004+ / Win11)
+        if (FAILED(fn(hwnd, 20, &value, sizeof(value)))) {
+            // 19 = old undocumented value used by Win10 1809..1909
+            fn(hwnd, 19, &value, sizeof(value));
+        }
+    }
+    FreeLibrary(hDwm);
+}
 
 // ============================================================================
 // Built-in palettes
@@ -160,6 +180,10 @@ void applyTheme(SimpleWindow* window, const Theme& th) {
     window->setBackgroundColor(th.bg);
     window->setTextColor      (th.text);
 
+    // Dark title bar (Windows 10 1809+). Heuristic: dark theme if bg is dim.
+    int lum = (GetRValue(th.bg) * 30 + GetGValue(th.bg) * 59 + GetBValue(th.bg) * 11) / 100;
+    applyDarkTitleBar(window->getHandle(), lum < 128);
+
     // Auto-style buttons that have no custom colors yet — secondary by default.
     for (auto* btn : window->getButtons()) {
         if (!btn) continue;
@@ -167,13 +191,16 @@ void applyTheme(SimpleWindow* window, const Theme& th) {
             styleSecondaryButton(btn, th);
     }
 
-    // Re-paint progress bars without explicit colors.
+    // Re-paint progress bars without explicit colors and theme tab pages.
     for (auto* comp : window->getComponents()) {
         if (auto* pb = dynamic_cast<ProgressBar*>(comp)) {
             // ProgressBar is conservative about its color API; just set a
             // theme-aware bar color. Users may override afterwards.
             pb->setColor   (th.accent);
             pb->setBackColor(th.surface);
+        }
+        else if (auto* tc = dynamic_cast<TabControl*>(comp)) {
+            tc->setPageBackground(th.bg);
         }
     }
 }

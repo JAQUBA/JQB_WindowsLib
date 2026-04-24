@@ -36,13 +36,23 @@ public:
     // Obsługa zdarzenia zmiany zakładki
     void handleSelection() override;
 
+    // Theming — set background color for tab content pages.
+    // Call after addTab(); recolors all existing pages and any added later.
+    // Used by applyTheme() to make tab pages match the window theme.
+    void setPageBackground(COLORREF color);
+    COLORREF getPageBackground() const { return m_pageBg; }
+
 private:
     int m_x, m_y, m_width, m_height;
     HWND m_hwnd;
     int m_id;
     std::vector<HWND> m_tabPages;
     std::function<void(int)> m_onTabChangeCallback;
-    
+    COLORREF m_pageBg = CLR_INVALID;
+    HBRUSH   m_pageBrush = NULL;
+
+    void applyPageBrush(HWND hPage);
+
     static int s_nextId;
 };
 

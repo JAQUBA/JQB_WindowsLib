@@ -5,9 +5,10 @@ Use this page as the central index for building real Windows desktop tools with 
 ## Start Here
 
 1. [Quick Start](QuickStart.md) — first project setup and minimal app skeleton.
-2. [Examples Overview](examples/README.md) — ready-to-adapt application patterns.
-3. [Project Blueprint](ProjectBlueprint.md) — production-grade project structure inspired by real apps.
-4. [Runnable Example Projects](../examples/README.md) — complete PlatformIO projects ready to build.
+2. [UI Design Guide](UIDesignGuide.md) — **read this before laying out a new app.** Cards, sections, accent buttons, status footer, threading.
+3. [Examples Overview](examples/README.md) — ready-to-adapt application patterns.
+4. [Project Blueprint](ProjectBlueprint.md) — production-grade project structure inspired by real apps.
+5. [Runnable Example Projects](../examples/README.md) — complete PlatformIO projects ready to build.
 
 ## AI-Assisted Workflow
 
@@ -46,6 +47,7 @@ Use this page as the central index for building real Windows desktop tools with 
 ### Theming
 
 - [Theme](Theme.md) — runtime palette + `applyTheme()` (Catppuccin / Nord / Dracula / Tokyo Night / One Dark / Gruvbox / light)
+- [UI Design Guide](UIDesignGuide.md) — **how to use Theme well**: cards, section headers, accent buttons, status dot, anti-patterns
 
 ### Device I/O
 

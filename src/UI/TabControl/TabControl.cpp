@@ -21,6 +21,18 @@ static LRESULT CALLBACK TabPageSubclassProc(HWND hwnd, UINT uMsg, WPARAM wParam,
     (void)uIdSubclass;
     (void)dwRefData;
 
+    // Themed background fill — if a brush has been set via setPageBackground(),
+    // paint the page client area with it instead of the default STATIC fill.
+    if (uMsg == WM_ERASEBKGND) {
+        HBRUSH br = (HBRUSH)GetPropW(hwnd, L"JQB_TabPageBrush");
+        if (br) {
+            HDC hdc = (HDC)wParam;
+            RECT rc; GetClientRect(hwnd, &rc);
+            FillRect(hdc, &rc, br);
+            return 1;
+        }
+    }
+
     // Forward messages to root window for event routing and theming
     switch (uMsg) {
         case WM_COMMAND:
@@ -38,6 +50,7 @@ static LRESULT CALLBACK TabPageSubclassProc(HWND hwnd, UINT uMsg, WPARAM wParam,
             break;
         }
         case WM_NCDESTROY:
+            RemovePropW(hwnd, L"JQB_TabPageBrush");
             RemoveWindowSubclass(hwnd, TabPageSubclassProc, TAB_PAGE_SUBCLASS_ID);
             break;
     }
@@ -63,6 +76,7 @@ TabControl::~TabControl() {
         DestroyWindow(m_hwnd);
         m_hwnd = NULL;
     }
+    if (m_pageBrush) { DeleteObject(m_pageBrush); m_pageBrush = NULL; }
 }
 
 void TabControl::create(HWND parent) {
@@ -131,12 +145,14 @@ int TabControl::addTab(const char* title) {
     GetClientRect(m_hwnd, &rcClient);
     TabCtrl_AdjustRect(m_hwnd, FALSE, &rcClient);
     
-    // Utwórz panel dla zawartości zakładki
+    // Utwórz panel dla zawartości zakładki.
+    // Brak SS_WHITERECT — tło maluje subclass (themable). Jeśli setPageBackground()
+    // nie zostało wywołane, panel używa domyślnego pędzla klasy STATIC (jasny).
     HWND hTabPage = CreateWindowExW(
         0,                          // Rozszerzony styl okna
         L"STATIC",                  // Nazwa klasy
         NULL,                       // Tekst
-        WS_CHILD | WS_VISIBLE | SS_WHITERECT, // Styl okna (biały)
+        WS_CHILD | WS_VISIBLE | WS_CLIPCHILDREN, // Styl okna (themable background)
         rcClient.left, rcClient.top,           // Pozycja
         rcClient.right - rcClient.left,        // Szerokość
         rcClient.bottom - rcClient.top,        // Wysokość
@@ -157,6 +173,7 @@ int TabControl::addTab(const char* title) {
     
     // Dodaj stronę do wektora
     m_tabPages.push_back(hTabPage);
+    applyPageBrush(hTabPage);
     
     // Pokaż tylko aktywną stronę
     int selectedTab = getSelectedTab();
@@ -296,4 +313,25 @@ void TabControl::handleSelection() {
             m_onTabChangeCallback(selectedTab);
         }
     }
+}
+
+// ---------------------------------------------------------------------------
+// Theming
+// ---------------------------------------------------------------------------
+void TabControl::setPageBackground(COLORREF color) {
+    m_pageBg = color;
+    if (m_pageBrush) DeleteObject(m_pageBrush);
+    m_pageBrush = CreateSolidBrush(color);
+    for (HWND p : m_tabPages) {
+        applyPageBrush(p);
+        InvalidateRect(p, NULL, TRUE);
+    }
+}
+
+void TabControl::applyPageBrush(HWND hPage) {
+    if (!hPage) return;
+    if (m_pageBrush)
+        SetPropW(hPage, L"JQB_TabPageBrush", (HANDLE)m_pageBrush);
+    else
+        RemovePropW(hPage, L"JQB_TabPageBrush");
 }
