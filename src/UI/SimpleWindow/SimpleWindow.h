@@ -58,7 +58,16 @@ class SimpleWindow {
         void add(TextArea* textArea);
         void add(ValueDisplay* valueDisplay);
         void add(Chart* chart);
-        
+
+        // Read-only accessors (introduced for runtime theming).
+        // Backwards compatible — purely additive.
+        const std::vector<UIComponent*>& getComponents() const { return m_components; }
+        const std::vector<Button*>&      getButtons()    const { return m_buttons; }
+        const std::vector<Label*>&       getLabels()     const { return m_labels; }
+        const std::vector<TextArea*>&    getTextAreas()  const { return m_textAreas; }
+        COLORREF getBackgroundColor() const { return m_backColor; }
+        COLORREF getDefaultTextColor() const { return m_textColor; }
+
     private:
         static SimpleWindow* s_instance;
         

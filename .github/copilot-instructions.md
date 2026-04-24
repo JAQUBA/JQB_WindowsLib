@@ -123,7 +123,8 @@ scripts/
 │   ├── Audio/              — Audio I/O (waveOut/waveIn, WaveGen, threaded double-buffering)
 │   ├── Serial/             — COM port (threaded receive, auto-reconnect)
 │   ├── BLE/                — Bluetooth LE (SetupAPI, GATT, overlapped I/O, scan/connect/notify/write)
-│   └── HID/                — USB HID (Feature Reports, device enumeration)
+│   ├── HID/                — USB HID (Feature Reports, device enumeration)
+│   └── Modbus/             — Modbus RTU (ModbusSerialPort with full DCB control + RtuMaster FC01/02/03/04/05/06/15/16)
 └── Util/
     ├── StringUtils.*       — UTF-8 ↔ UTF-16 ↔ ANSI, extractComPort
     ├── FileDialogs.*       — native folder/save dialogs with UTF-8 return paths
@@ -132,6 +133,8 @@ scripts/
     ├── ConfigManager.*     — key=value save/load (INI-like, auto-save)
     ├── DataLogger.*        — generic CSV logger with auto-timestamp
     ├── HotkeyManager.*     — global keyboard shortcuts (WH_KEYBOARD_LL hook, dialog, config)
+    ├── PollingManager.*    — periodic polling groups (named, interval-driven, ticked from loop())
+    ├── TextLogger.*        — INFO/ERROR/TX/RX log sink for TextArea (filterable, snapshot for export)
         ├── TreePanel/          — LISTBOX-based checkable tree widget with collapsible sections
     └── Statistics.h        — header-only MIN/MAX/AVG/PEAK statistics
 ```
@@ -609,6 +612,11 @@ baudrate=9600
 36. **WaveGen** — `engine.getWaveGen()` returns `WaveGen&`. `setWaveform()`, `setFrequency()`, `setAmplitude()`, `resetPhase()`. Enum: `WAVE_SINE`, `WAVE_SAWTOOTH`, `WAVE_TRIANGLE`, `WAVE_SQUARE`, `WAVE_WHITE_NOISE`.
 37. **Audio constants** — `AUDIO_SAMPLE_RATE` (48000 default/fallback), `AUDIO_BUFFER_SAMPLES` (4096), `AUDIO_NUM_BUFFERS` (3), `AUDIO_DOWNSAMPLE` (8 default), `AUDIO_SNAPSHOT_SIZE` (`AUDIO_BUFFER_SAMPLES`). Configurable downsample via `engine.setDownsampleFactor()`. Configurable sample rate via `engine.setSampleRate()` (auto-negotiated on start).
 38. **CanvasWindow** — reusable zoomable/pannable GDI canvas (`UI/CanvasWindow/CanvasWindow.h`). `create(parent, x, y, w, h)`, `redraw()`, `resetView()`, `setGridVisible()` / `setGridSpacing()` / `setGridExtent()` / `setGridColor()`, `setBackgroundColor()`, `setDefaultZoom()` / `setDefaultPan()`. Subclass overrides `virtual onDraw(HDC, RECT)`. Coordinate helpers: `toScreenX(worldX)` / `toScreenY(worldY)`. World units in mm, Y-axis flipped. Mouse: wheel = zoom towards cursor, left-drag = pan, double-click = reset. Child window with `GWLP_USERDATA` pattern (not a `UIComponent`).
+41. **Theme** — `<UI/Theme/Theme.h>`, runtime `struct Theme { bg, surface, surface2, text, textDim, accent, accentHover, ok, warn, err, fontName, fontSize }`. Static palette factories: `Theme::catppuccinMocha/Frappe/Latte()`, `nord()`, `dracula()`, `tokyoNight()`, `oneDark()`, `gruvboxDark()`, `light()`. Free functions: `applyTheme(SimpleWindow*, const Theme&)` (sets bg + default text color + auto-styles all buttons + recolors all `ProgressBar`s), `styleAccentButton(Button*, const Theme&)`, `styleSecondaryButton(Button*, const Theme&)`. Coexists with the older macro-based palette headers (`Theme/CatppuccinMocha.h` etc.) — both APIs are valid.
+42. **PollingManager** — `<Util/PollingManager.h>`, top-level `class PollingManager` with nested `Group{name, intervalMs, enabled, nextTick, action}`. `addGroup(name, ms, action)` / `setEnabled(name, bool)` / `setInterval(name, ms)` / `trigger(name)` (run once now) / `tick()` (call from `loop()`). Single-threaded — actions run on UI thread.
+43. **TextLogger** — `<Util/TextLogger.h>`, generic `TextArea` sink. `attach(TextArea*)`, `info(wstring)`, `error(wstring)`, `tx(tag, bytes)`, `rx(tag, bytes)` (auto hex-format), `snapshot()` (full buffer for export), `clear()`. Live filter flags: `showInfo / showError / showTx / showRx`. No protocol coupling.
+44. **Modbus RTU stack** — `<IO/Modbus/ModbusSerialPort.h>` + `<IO/Modbus/ModbusRTU.h>`, in `modbus::` namespace. Use `ModbusSerialPort` (NOT the general-purpose `Serial`) when you need DCB control: parity, stop bits, data bits, hard read timeout. `RtuMaster(port)` provides FC01/02/03/04/05/06/15/16, returns `Result{status, exceptionCode, message}`. Helpers: `crc16(data, len)` (poly 0xA001), `toHex(bytes)`. Synchronous — call from worker thread (`CreateThread`) for long scans, not from `loop()`. `ModbusSerialPort::enumPorts()` returns `std::vector<std::string>` of available COM ports.
+45. **SimpleWindow accessors (read-only, for theming)** — `getComponents()`, `getButtons()`, `getLabels()`, `getTextAreas()`, `getBackgroundColor()`, `getDefaultTextColor()`. Used by `applyTheme()`. Backwards-compatible additions; safe to call from your own code.
 
 ### Typical Application Layout
 

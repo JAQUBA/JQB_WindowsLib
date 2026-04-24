@@ -53,6 +53,10 @@ When adding features or changing behavior, update docs in the same change:
 - Detached logs: `LogWindow`
 - Persistent settings: `ConfigManager`
 - Background tasks: `CreateThread` + progress/log feedback
+- Periodic polling: `PollingManager` (named groups, `tick()` from `loop()`)
+- App-wide log sink: `TextLogger` attached to a `TextArea` (with INFO/ERROR/TX/RX filters)
+- Industrial protocols: `IO/Modbus` (`ModbusSerialPort` + `RtuMaster`) — use this instead of generic `Serial` when DCB control is needed
+- Modern look: `applyTheme(window, Theme::catppuccinMocha())` + `styleAccentButton()` for primary actions
 
 ## Useful References
 

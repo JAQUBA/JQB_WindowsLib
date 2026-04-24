@@ -43,6 +43,10 @@ Use this page as the central index for building real Windows desktop tools with 
 - [TabControl](TabControl.md)
 - [TreePanel](TreePanel.md)
 
+### Theming
+
+- [Theme](Theme.md) — runtime palette + `applyTheme()` (Catppuccin / Nord / Dracula / Tokyo Night / One Dark / Gruvbox / light)
+
 ### Device I/O
 
 - [Serial](Serial.md)
@@ -51,12 +55,19 @@ Use this page as the central index for building real Windows desktop tools with 
 - [AudioEngine](AudioEngine.md)
 - [WaveGen](WaveGen.md)
 
+### Industrial Protocols
+
+- [ModbusSerialPort](ModbusSerialPort.md) — configurable serial (DCB, parity, stop bits) for protocol stacks
+- [ModbusRTU](ModbusRTU.md) — synchronous RTU master, FC01/02/03/04/05/06/15/16, CRC-16
+
 ### Utilities
 
 - [ConfigManager](ConfigManager.md)
 - [StringUtils](StringUtils.md)
 - [FileDialogs](FileDialogs.md)
 - [TimerUtils](TimerUtils.md)
+- [PollingManager](PollingManager.md) — periodic polling groups for `loop()`
+- [TextLogger](TextLogger.md) — INFO/ERROR/TX/RX log sink for `TextArea`
 
 ## Production App Patterns
 
