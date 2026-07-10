@@ -619,6 +619,9 @@ baudrate=9600
 45. **SimpleWindow accessors (read-only, for theming)** — `getComponents()`, `getButtons()`, `getLabels()`, `getTextAreas()`, `getBackgroundColor()`, `getDefaultTextColor()`. Used by `applyTheme()`. Backwards-compatible additions; safe to call from your own code.
 46. **TabControl page theming** — `setPageBackground(COLORREF)` recolors all tab pages with a custom brush (replaces the default white STATIC fill). Auto-called by `applyTheme()`. Pages are now plain `STATIC` (no `SS_WHITERECT`) and the page subclass paints `WM_ERASEBKGND` via a brush stored on each page (`SetPropW(L"JQB_TabPageBrush")`).
 47. **UI Design Guide** — [docs/UIDesignGuide.md](../docs/UIDesignGuide.md). Prescriptive rules for laying out apps: cards, section headers, field labels, accent buttons, status footer, 8/16/24 spacing rule, threading, polling, anti-patterns. **Read before laying out a new app.** Reference apps: WektoroweLitery2, gerber2gcode, Konfigurator.
+48. **Workspace Copilot agents** — custom agents are available in `.github/agents/` (Project Accelerator, Architecture Planner, UI Builder, IO Integrator, Docs and Release Steward, Firmware App Bridge, Audio DSP UI, CAM Pipeline Engineer). Use them for role-focused delegation in larger tasks.
+49. **Workspace Copilot skills** — reusable slash workflows are available in `.github/skills/` (`/jqb-app-skeleton`, `/jqb-tab-feature-pack`, `/jqb-io-pipeline`, `/jqb-background-worker`, `/jqb-persistence-logging`, `/jqb-doc-sync`, `/jqb-dual-runtime-product`, `/jqb-protocol-contract`, `/jqb-audio-analysis-app`, `/jqb-cam-pipeline-app`, `/jqb-export-validation`, `/jqb-project-archetypes`, `/learn`). Prefer these when starting new projects or repeating common implementation patterns.
+50. **Workspace file instructions** — automatic guidance files are in `.github/instructions/` and should remain aligned with actual coding standards and architecture.
 
 ### Typical Application Layout
 

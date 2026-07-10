@@ -14,6 +14,8 @@ Use this page as the central index for building real Windows desktop tools with 
 
 - [AI Assistants Guide](AI_Assistants.md) — practical prompt templates for GitHub Copilot and Claude Code.
 - [Copilot Instructions](../.github/copilot-instructions.md) — repository-specific coding rules for GitHub Copilot.
+- [Workspace Copilot Agents](../.github/agents/README.md) — role-specialized agents for architecture, UI, I/O, and docs.
+- [Workspace Copilot Skills](../.github/skills/README.md) — reusable slash workflows and templates for faster project delivery.
 - [Claude Project Instructions](../CLAUDE.md) — repository-specific rules for Claude Code.
 
 ## Component Documentation

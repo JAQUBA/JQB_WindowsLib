@@ -121,6 +121,58 @@ These requests are especially useful in projects similar to gerber2gcode and Wek
 6. Add ConfigManager persistence for all user settings.
 7. Add keyboard shortcuts via subclassed window procedure.
 
+## Workspace Copilot Agents and Skills
+
+This repository now includes reusable workspace-level custom agents and skills for VS Code GitHub Copilot.
+
+### Custom Agents (.github/agents)
+
+- **JQB Project Accelerator**: orchestrates end-to-end delivery for new tools.
+- **JQB Architecture Planner**: designs module split and data flow.
+- **JQB UI Builder**: implements tabs/cards/components and callback wiring.
+- **JQB IO Integrator**: builds protocol stacks and telemetry pipelines.
+- **JQB Docs and Release Steward**: keeps docs and API notes synchronized.
+- **JQB Firmware App Bridge**: coordinates shared firmware+desktop protocol evolution.
+- **JQB Audio DSP UI**: specializes in realtime audio generator/analyzer workflows.
+- **JQB CAM Pipeline Engineer**: specializes in deterministic parse-to-G-Code pipelines.
+
+### Custom Skills (.github/skills)
+
+- `/jqb-app-skeleton`: scaffolds AppState/AppUI/setup/loop foundation.
+- `/jqb-tab-feature-pack`: creates one complete feature tab or section.
+- `/jqb-io-pipeline`: implements robust communication pipeline patterns.
+- `/jqb-background-worker`: adds CreateThread + PostMessageW worker flow.
+- `/jqb-persistence-logging`: wires ConfigManager and TextLogger patterns.
+- `/jqb-doc-sync`: enforces documentation synchronization in same change set.
+- `/jqb-dual-runtime-product`: structures firmware+app co-development and release flow.
+- `/jqb-protocol-contract`: versioned report contracts with compatibility rules.
+- `/jqb-audio-analysis-app`: complete realtime audio analyzer/generator pattern.
+- `/jqb-cam-pipeline-app`: staged parse/normalize/generate/export CAM architecture.
+- `/jqb-export-validation`: output safety checks and pre-export quality gates.
+- `/jqb-project-archetypes`: selects project archetype and rollout sequence.
+- `/learn`: keeps the skill catalog updated with new project lessons.
+
+### Suggested Flow for New Projects
+
+1. Start with **JQB Project Accelerator**.
+2. Use `/jqb-app-skeleton` to generate initial structure.
+3. Add features with `/jqb-tab-feature-pack` and `/jqb-io-pipeline`.
+4. Add long tasks with `/jqb-background-worker`.
+5. Finalize with `/jqb-persistence-logging` and `/jqb-doc-sync`.
+6. Capture lessons after delivery with `/learn`.
+
+### Project Archetypes (from production examples)
+
+1. **Firmware + Configurator** (CH552G-like):
+	- Start with `/jqb-dual-runtime-product` and `/jqb-protocol-contract`
+	- Then use **JQB Firmware App Bridge** for compatibility rollout
+2. **Audio Analyzer** (AudioAnalyzer-like):
+	- Start with `/jqb-app-skeleton` + `/jqb-audio-analysis-app`
+	- Use **JQB Audio DSP UI** for chart stability and loop tuning
+3. **CAD/CAM Exporter** (gerber2gcode-like):
+	- Start with `/jqb-cam-pipeline-app` + `/jqb-export-validation`
+	- Use **JQB CAM Pipeline Engineer** for deterministic pipeline architecture
+
 ## Review Checklist for AI Output
 
 Use this checklist before accepting generated code:
@@ -181,3 +233,34 @@ When a feature changes behavior, update docs in the same change set:
 - [docs/README.md](README.md)
 - [docs/examples/README.md](examples/README.md)
 - relevant component docs in `docs/`
+
+## Lessons Learned Template (PR Knowledge Entry)
+
+Use this section in every PR to keep reusable project knowledge consistent.
+
+```markdown
+## Lessons Learned
+
+### Context
+- Task/feature:
+- Affected modules:
+- Why this was non-trivial:
+
+### What Worked
+-
+
+### What Failed or Was Risky
+-
+
+### Reusable Pattern
+-
+
+### Skills to Update
+- Existing skill(s) updated:
+- New assets/references needed:
+
+### Follow-up
+-
+```
+
+After filling this section, run `/learn` to propagate confirmed patterns into `.github/skills` and related docs.
