@@ -6,6 +6,7 @@
 // CanvasWindow.cpp — Zoomable/pannable GDI canvas implementation
 // ============================================================================
 #include "CanvasWindow.h"
+#include <cmath>
 #include <windowsx.h>
 
 const wchar_t* CanvasWindow::CLASS_NAME = L"JQB_CanvasWindow";
@@ -103,7 +104,8 @@ void CanvasWindow::setBackgroundColor(COLORREF color) {
 
 void CanvasWindow::setDefaultZoom(double zoom) {
     m_defaultZoom = zoom;
-    m_zoom = zoom;
+    m_zoom = clampZoom(zoom);
+    m_defaultZoom = m_zoom;
 }
 
 void CanvasWindow::setDefaultPan(double panX, double panY) {
@@ -111,6 +113,35 @@ void CanvasWindow::setDefaultPan(double panX, double panY) {
     m_defaultPanY = panY;
     m_panX = panX;
     m_panY = panY;
+}
+
+void CanvasWindow::setZoomMultiplier(double multiplier) {
+    if (std::isfinite(multiplier) && multiplier > 1.0) {
+        m_zoomMultiplier = multiplier;
+    }
+}
+
+void CanvasWindow::setMinZoom(double minZoom) {
+    if (std::isfinite(minZoom) && minZoom > 0.0 && minZoom <= m_maxZoom) {
+        m_minZoom = minZoom;
+        m_zoom = clampZoom(m_zoom);
+        m_defaultZoom = clampZoom(m_defaultZoom);
+    }
+}
+
+void CanvasWindow::setMaxZoom(double maxZoom) {
+    if (std::isfinite(maxZoom) && maxZoom >= m_minZoom) {
+        m_maxZoom = maxZoom;
+        m_zoom = clampZoom(m_zoom);
+        m_defaultZoom = clampZoom(m_defaultZoom);
+    }
+}
+
+double CanvasWindow::clampZoom(double zoom) const {
+    if (!std::isfinite(zoom)) return m_minZoom;
+    if (zoom < m_minZoom) return m_minZoom;
+    if (zoom > m_maxZoom) return m_maxZoom;
+    return zoom;
 }
 
 // ============================================================================
@@ -202,10 +233,9 @@ LRESULT CALLBACK CanvasWindow::WndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARA
             ScreenToClient(hwnd, &pt);
 
             double oldZoom = self->m_zoom;
-            double zoomDelta = (delta > 0) ? 0.02 : -0.02;
-            self->m_zoom += zoomDelta;
-            if (self->m_zoom < 0.02) self->m_zoom = 0.02;
-            if (self->m_zoom > 5.0) self->m_zoom = 5.0;
+            double wheelSteps = static_cast<double>(delta) / WHEEL_DELTA;
+            self->m_zoom = self->clampZoom(
+                oldZoom * std::pow(self->m_zoomMultiplier, wheelSteps));
 
             double ratio = self->m_zoom / oldZoom;
             self->m_panX = pt.x - ratio * (pt.x - self->m_panX);

@@ -46,6 +46,14 @@ public:
     void setDefaultZoom(double zoom);
     void setDefaultPan(double panX, double panY);
 
+    // Zoom behavior
+    void setZoomMultiplier(double multiplier);
+    double getZoomMultiplier() const { return m_zoomMultiplier; }
+    void setMinZoom(double minZoom);
+    double getMinZoom() const { return m_minZoom; }
+    void setMaxZoom(double maxZoom);
+    double getMaxZoom() const { return m_maxZoom; }
+
 protected:
     // Override in subclass to draw custom content.
     // HDC has double-buffered context. Use toScreenX/Y for transforms.
@@ -73,6 +81,11 @@ private:
     double m_defaultZoom = 0.15;
     double m_defaultPanX = 10.0;
     double m_defaultPanY = 10.0;
+    double m_zoomMultiplier = 1.10;
+    double m_minZoom = 0.02;
+    double m_maxZoom = 5.0;
+
+    double clampZoom(double zoom) const;
 
     // Mouse drag state
     bool m_dragging = false;

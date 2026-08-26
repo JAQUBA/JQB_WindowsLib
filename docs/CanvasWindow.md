@@ -103,6 +103,28 @@ canvas->redraw();
 | `void setDefaultZoom(double zoom)` | Set default zoom level (used on reset) |
 | `void setDefaultPan(double x, double y)` | Set default pan offset (used on reset) |
 
+### Zoom Behavior
+
+| Method | Description |
+|--------|-------------|
+| `void setZoomMultiplier(double multiplier)` | Set the multiplicative zoom change per wheel notch; values must be greater than `1.0` |
+| `double getZoomMultiplier() const` | Get the current zoom multiplier |
+| `void setMinZoom(double minZoom)` | Set the minimum zoom; the value must be positive and no greater than the maximum |
+| `double getMinZoom() const` | Get the minimum zoom |
+| `void setMaxZoom(double maxZoom)` | Set the maximum zoom; the value must be no less than the minimum |
+| `double getMaxZoom() const` | Get the maximum zoom |
+
+The defaults are a `1.10` multiplier, `0.02` minimum zoom, and `5.0` maximum
+zoom. The wheel changes the scale by a constant percentage per notch and
+preserves the world point below the cursor. Invalid setter values are ignored.
+Multiple wheel notches are handled according to `delta / WHEEL_DELTA`.
+
+```cpp
+canvas->setZoomMultiplier(1.05);
+canvas->setMinZoom(0.01);
+canvas->setMaxZoom(20.0);
+```
+
 ### Coordinate Helpers
 
 | Method | Description |
