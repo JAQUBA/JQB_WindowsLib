@@ -28,6 +28,8 @@ public:
     
     void setPort(const char* portName);
     void setBaudRate(DWORD baudRate);
+    void setParity(BYTE parity);      // NOPARITY, ODDPARITY, EVENPARITY, MARKPARITY, SPACEPARITY
+    void setStopBits(BYTE stopBits);  // ONESTOPBIT, ONE5STOPBITS, TWOSTOPBITS
     void updateComPorts();
     const std::vector<std::string>& getAvailablePorts() const { return m_availablePorts; }
     
@@ -50,6 +52,8 @@ private:
     bool m_connected;
     std::string m_portName;
     DWORD m_baudRate;
+    BYTE m_parity;
+    BYTE m_stopBits;
     std::vector<std::string> m_availablePorts;
     
     // Callbacki

@@ -16,7 +16,7 @@ Serial port (COM / RS-232) communication module with:
 Serial();
 ```
 
-No parameters required. Connection parameters are configured internally.
+No parameters required. Connection parameters are configured internally via `setBaudRate()`/`setParity()`/`setStopBits()` before calling `connect()`.
 
 ## Default Connection Parameters
 
@@ -40,6 +40,9 @@ No parameters required. Connection parameters are configured internally.
 | `disconnect()` | `void` | Closes port and stops thread |
 | `isConnected()` | `bool` | Whether connection is active |
 | `setPort(const char* portName)` | `void` | Sets port (e.g. `"COM3"`) |
+| `setBaudRate(DWORD baudRate)` | `void` | Sets baud rate (e.g. `CBR_9600`, `CBR_115200`) |
+| `setParity(BYTE parity)` | `void` | Sets parity (`NOPARITY`, `ODDPARITY`, `EVENPARITY`, `MARKPARITY`, `SPACEPARITY`) |
+| `setStopBits(BYTE stopBits)` | `void` | Sets stop bits (`ONESTOPBIT`, `ONE5STOPBITS`, `TWOSTOPBITS`) |
 | `updateComPorts()` | `void` | Re-scans ports |
 | `getAvailablePorts()` | `const vector<string>&` | List of available ports |
 

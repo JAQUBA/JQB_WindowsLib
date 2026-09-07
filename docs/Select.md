@@ -87,3 +87,17 @@ sel->setText("COM3");  // Selects the "COM3" item
 - `height` refers to the edit field. The dropdown list is automatically taller (+150 px)
 - `link()` does not copy data — it holds a pointer to the vector. The vector must outlive the Select
 - `clear()` resets the list and `selectedIndex`
+- **Gotcha — `setText()` before the control exists has no visual effect.** The combo is created with
+  `CBS_DROPDOWNLIST` style, whose displayed text is tied purely to the current `CB_SETCURSEL`
+  selection, not to arbitrary window text. If `setText()` is called while `m_hwnd` is still `NULL`
+  (i.e. **before** `window->add(select)`), it only updates the internal `m_text` field — no
+  `CB_SETCURSEL` is issued, and once the control is created the box renders **blank** even though
+  `getText()` returns the "right" value. Always call `addItem()` before `add()`, but call
+  `setText()` (e.g. to restore a saved value) **after** `window->add(select)`:
+  ```cpp
+  Select* sel = new Select(x, y, w, h, "9600", nullptr);
+  sel->addItem("9600");
+  sel->addItem("115200");
+  window->add(sel);              // creates the HWND
+  sel->setText(savedValue.c_str()); // now correctly selects the matching item
+  ```

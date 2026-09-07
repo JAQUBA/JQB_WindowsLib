@@ -406,6 +406,11 @@ new Select(x, y, w, h, "Default",
 );
 ```
 
+> **Gotcha:** `setText()` only takes visual effect (issues `CB_SETCURSEL`) once the control's HWND
+> exists. Call it **after** `window->add(select)`, never before — calling it earlier (e.g. right
+> after `new Select(...)` to restore a saved setting) silently only updates the internal `m_text`
+> and leaves the `CBS_DROPDOWNLIST` box rendering blank. `addItem()` is fine to call before `add()`.
+
 ### CheckBox — State Change
 
 ```cpp

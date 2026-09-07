@@ -12,7 +12,7 @@ DEFINE_GUID(GUID_DEVCLASS_PORTS,
     0x4D36E978, 0xE325, 0x11CE, 0xBF, 0xC1, 0x08, 0x00, 0x2B, 0xE1, 0x03, 0x18);
 
 Serial::Serial() : m_serialHandle(INVALID_HANDLE_VALUE), m_connected(false), 
-                   m_baudRate(CBR_9600),
+                   m_baudRate(CBR_9600), m_parity(NOPARITY), m_stopBits(ONESTOPBIT),
                    m_onConnectCallback(nullptr), m_onDisconnectCallback(nullptr),
                    m_onReceiveCallback(nullptr), m_onErrorCallback(nullptr),
                    m_stopReadThread(false), m_connectionLost(false),
@@ -119,8 +119,8 @@ bool Serial::connect() {
     // Konfiguracja parametrów portu COM
     dcbSerialParams.BaudRate = m_baudRate;
     dcbSerialParams.ByteSize = 8;
-    dcbSerialParams.StopBits = ONESTOPBIT;
-    dcbSerialParams.Parity   = NOPARITY;
+    dcbSerialParams.StopBits = m_stopBits;
+    dcbSerialParams.Parity   = m_parity;
     dcbSerialParams.fBinary  = TRUE;
     
     // Wyłącz flow control (krytyczne dla Bluetooth SPP / HC-06)
@@ -132,6 +132,9 @@ bool Serial::connect() {
     dcbSerialParams.fErrorChar     = FALSE;
     dcbSerialParams.fNull          = FALSE;
     dcbSerialParams.fAbortOnError  = FALSE;
+    
+    // Ustaw bit parzystości tylko gdy parity != NOPARITY (wymóg WinAPI)
+    dcbSerialParams.fParity = (m_parity != NOPARITY) ? TRUE : FALSE;
     
     // Sygnały sterujące — asertuj DTR/RTS, bez handshake
     dcbSerialParams.fDtrControl = DTR_CONTROL_ENABLE;
@@ -220,6 +223,14 @@ void Serial::setPort(const char* portName) {
 
 void Serial::setBaudRate(DWORD baudRate) {
     m_baudRate = baudRate;
+}
+
+void Serial::setParity(BYTE parity) {
+    m_parity = parity;
+}
+
+void Serial::setStopBits(BYTE stopBits) {
+    m_stopBits = stopBits;
 }
 
 void Serial::updateComPorts() {
