@@ -341,6 +341,10 @@ void Serial::onError(std::function<void()> callback) {
     m_onErrorCallback = callback;
 }
 
+void Serial::onCommError(std::function<void(DWORD)> callback) {
+    m_onCommErrorCallback = callback;
+}
+
 bool Serial::send(const std::vector<uint8_t>& data) {
     // Wrapper dla metody write, może być w przyszłości rozbudowany
     return write(data);
@@ -377,11 +381,15 @@ void Serial::readThreadFunction() {
                 }
                 
                 if (errors > 0) {
-                    // Obsługa błędów komunikacyjnych
+                    // Obsługa błędów komunikacyjnych - to jest zgłaszane przez sterownik przy realnej
+                    // utracie/uszkodzeniu bajtów na linii (framing/overrun/parity), więc powędroło dalej niz DebugView
                     consecutiveErrors++;
                     char buf[128];
                     snprintf(buf, sizeof(buf), "Serial: Comm error=0x%lX, count=%d\n", errors, consecutiveErrors);
                     OutputDebugStringA(buf);
+                    if (m_onCommErrorCallback) {
+                        m_onCommErrorCallback(errors);
+                    }
                 }
             } else {
                 // ClearCommError nie udało się - port prawdopodobnie został odłączony

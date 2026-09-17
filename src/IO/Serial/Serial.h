@@ -41,6 +41,7 @@ public:
     void onDisconnect(std::function<void()> callback);
     void onReceive(std::function<void(const std::vector<uint8_t>&)> callback);
     void onError(std::function<void()> callback);  // Callback błędu połączenia
+    void onCommError(std::function<void(DWORD)> callback);  // Błędy sprzętowe portu (CE_FRAME/CE_OVERRUN/...), nie rozłącza
     bool send(const std::vector<uint8_t>& data);
     
     // Sprawdza czy połączenie zostało utracone (do wywoływania w loop)
@@ -61,6 +62,7 @@ private:
     std::function<void()> m_onDisconnectCallback;
     std::function<void(const std::vector<uint8_t>&)> m_onReceiveCallback;
     std::function<void()> m_onErrorCallback;  // Callback błędu (np. port odłączony)
+    std::function<void(DWORD)> m_onCommErrorCallback;  // Callback błędu sprzętowego (nie rozłącza)
     
     // Wątek odczytu danych (Windows API zamiast std::thread)
     HANDLE m_readThread;
